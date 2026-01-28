@@ -1,0 +1,135 @@
+import { z } from "zod";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { FoundryClient } from "../foundry-client.js";
+import { DOCUMENT_TYPES, EMBEDDED_DOCUMENT_TYPES } from "../types.js";
+
+const parentTypeSchema = z.enum(DOCUMENT_TYPES);
+const embeddedTypeSchema = z.enum(EMBEDDED_DOCUMENT_TYPES);
+
+export function registerEmbeddedTools(
+  server: McpServer,
+  client: FoundryClient,
+): void {
+  server.tool(
+    "foundry_list_embedded",
+    "List embedded documents within a parent (e.g., Items on an Actor, Tokens on a Scene)",
+    {
+      parentType: parentTypeSchema.describe("Parent document type (e.g., Actor, Scene)"),
+      parentId: z.string().describe("Parent document _id"),
+      embeddedType: embeddedTypeSchema.describe("Embedded document type (e.g., Item, ActiveEffect, Token)"),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe('Fields to include. Default: ["_id", "name", "type"]'),
+    },
+    async ({ parentType, parentId, embeddedType, fields }) => {
+      const response = await client.modifyDocument(embeddedType, "get", {
+        query: {},
+        parentUuid: `${parentType}.${parentId}`,
+      });
+
+      const docs = (response.result || []) as Record<string, unknown>[];
+      const defaultFields = ["_id", "name", "type"];
+      const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
+
+      const results = docs.map((d) => {
+        const result: Record<string, unknown> = {};
+        for (const field of selectedFields) {
+          result[field] = d[field];
+        }
+        return result;
+      });
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ total: results.length, documents: results }, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "foundry_create_embedded",
+    "Create an embedded document within a parent (e.g., add an Item to an Actor)",
+    {
+      parentType: parentTypeSchema.describe("Parent document type"),
+      parentId: z.string().describe("Parent document _id"),
+      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      data: z.record(z.unknown()).describe("Embedded document data"),
+    },
+    async ({ parentType, parentId, embeddedType, data }) => {
+      const response = await client.modifyDocument(embeddedType, "create", {
+        data: [data],
+        parentUuid: `${parentType}.${parentId}`,
+      });
+
+      const created = (response.result || [])[0];
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(created, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "foundry_update_embedded",
+    "Update an embedded document within a parent",
+    {
+      parentType: parentTypeSchema.describe("Parent document type"),
+      parentId: z.string().describe("Parent document _id"),
+      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      id: z.string().describe("Embedded document _id"),
+      updates: z.record(z.unknown()).describe("Partial update object"),
+    },
+    async ({ parentType, parentId, embeddedType, id, updates }) => {
+      const response = await client.modifyDocument(embeddedType, "update", {
+        updates: [{ _id: id, ...updates }],
+        parentUuid: `${parentType}.${parentId}`,
+      });
+
+      const updated = (response.result || [])[0];
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(updated, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "foundry_delete_embedded",
+    "Delete an embedded document from its parent",
+    {
+      parentType: parentTypeSchema.describe("Parent document type"),
+      parentId: z.string().describe("Parent document _id"),
+      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      id: z.string().describe("Embedded document _id to delete"),
+    },
+    async ({ parentType, parentId, embeddedType, id }) => {
+      const response = await client.modifyDocument(embeddedType, "delete", {
+        ids: [id],
+        parentUuid: `${parentType}.${parentId}`,
+      });
+
+      const deleted = (response.result || [])[0];
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ deleted: true, id: deleted }, null, 2),
+          },
+        ],
+      };
+    },
+  );
+}
