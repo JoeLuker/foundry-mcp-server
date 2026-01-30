@@ -75,6 +75,48 @@ export class FoundryClient {
     this._state = "disconnected";
   }
 
+  async uploadFile(
+    source: string,
+    targetPath: string,
+    fileName: string,
+    fileContent: ArrayBuffer,
+    mimeType: string,
+  ): Promise<{ path: string }> {
+    await this.ensureConnected();
+
+    const file = new File([fileContent], fileName, { type: mimeType });
+    const fd = new FormData();
+    fd.set("source", source);
+    fd.set("target", targetPath);
+    fd.set("upload", file);
+
+    const response = await fetch(`${this.config.url}/upload`, {
+      method: "POST",
+      headers: { cookie: `session=${this.sessionId!}` },
+      body: fd,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed with HTTP ${response.status}`);
+    }
+
+    const result = (await response.json()) as {
+      path?: string;
+      message?: string;
+      error?: string;
+    };
+
+    if (result.error) {
+      throw new Error(`Upload error: ${result.error}`);
+    }
+
+    if (!result.path) {
+      throw new Error("Upload succeeded but no path returned");
+    }
+
+    return { path: result.path };
+  }
+
   async modifyDocument(
     type: string,
     action: "get" | "create" | "update" | "delete",

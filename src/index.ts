@@ -7,6 +7,7 @@ import { registerWorldTools } from "./tools/world.js";
 import { registerDocumentTools } from "./tools/documents.js";
 import { registerEmbeddedTools } from "./tools/embedded.js";
 import { registerChatTools } from "./tools/chat.js";
+import { registerUploadTools } from "./tools/uploads.js";
 import type { FoundryConfig } from "./types.js";
 
 const config: FoundryConfig = {
@@ -35,6 +36,7 @@ registerWorldTools(server, foundryClient);
 registerDocumentTools(server, foundryClient);
 registerEmbeddedTools(server, foundryClient);
 registerChatTools(server, foundryClient);
+registerUploadTools(server, foundryClient);
 
 // Connect MCP transport
 const transport = new StdioServerTransport();
