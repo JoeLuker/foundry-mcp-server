@@ -230,6 +230,91 @@ export function registerDocumentTools(
     },
   );
 
+  // === Batch operations ===
+
+  server.tool(
+    "foundry_create_document_batch",
+    "Create multiple documents in a single operation.",
+    {
+      documentType: documentTypeSchema.describe("Document type"),
+      data: z
+        .array(z.record(z.unknown()))
+        .describe("Array of document data objects. Each must include 'name' at minimum."),
+    },
+    async ({ documentType, data }) => {
+      const response = await client.modifyDocument(documentType, "create", {
+        data,
+      });
+
+      const results = (response.result || []) as Record<string, unknown>[];
+      const ids = results.map((r) => r._id);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ created: ids.length, ids }, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "foundry_update_document_batch",
+    "Update multiple documents in a single operation. Each object in the updates array must include _id.",
+    {
+      documentType: documentTypeSchema.describe("Document type"),
+      updates: z
+        .array(z.record(z.unknown()))
+        .describe("Array of update objects, each must include _id"),
+    },
+    async ({ documentType, updates }) => {
+      for (const u of updates) {
+        if (!u._id) throw new Error("Each update object must include an _id field");
+      }
+      const response = await client.modifyDocument(documentType, "update", {
+        updates,
+      });
+
+      const results = (response.result || []) as Record<string, unknown>[];
+      const ids = results.map((r) => r._id);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ updated: ids.length, ids }, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "foundry_delete_document_batch",
+    "Delete multiple documents in a single operation.",
+    {
+      documentType: documentTypeSchema.describe("Document type"),
+      ids: z.array(z.string()).describe("Array of document _ids to delete"),
+    },
+    async ({ documentType, ids }) => {
+      const response = await client.modifyDocument(documentType, "delete", {
+        ids,
+      });
+
+      const results = (response.result || []) as string[];
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ deleted: results.length, ids: results }, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  // === Single-item operations ===
+
   server.tool(
     "foundry_create_document",
     "Create a new document in the Foundry VTT world",

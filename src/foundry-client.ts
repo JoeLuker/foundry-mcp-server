@@ -28,6 +28,10 @@ export class FoundryClient {
     return this._worldInfo;
   }
 
+  get userId(): string | null {
+    return this._userId;
+  }
+
   get isReady(): boolean {
     return this._state === "ready" && this.socket?.connected === true;
   }
@@ -35,12 +39,10 @@ export class FoundryClient {
   async ensureConnected(): Promise<void> {
     if (this.isReady) return;
     if (this.connectPromise) return this.connectPromise;
-    this.connectPromise = this.connect();
-    try {
-      await this.connectPromise;
-    } finally {
+    this.connectPromise = this.connect().finally(() => {
       this.connectPromise = null;
-    }
+    });
+    return this.connectPromise;
   }
 
   async connect(): Promise<void> {
@@ -124,13 +126,48 @@ export class FoundryClient {
   ): Promise<DocumentSocketResponse> {
     await this.ensureConnected();
 
+    try {
+      return await this._emitModifyDocument(type, action, operation);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // Retry once on disconnect-related errors
+      if (
+        message.includes("timed out") ||
+        message.includes("disconnected") ||
+        message.includes("Not connected") ||
+        !this.socket?.connected
+      ) {
+        // Force full reconnection
+        this._state = "disconnected";
+        this.sessionId = null;
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
+        await this.ensureConnected();
+        return await this._emitModifyDocument(type, action, operation);
+      }
+      throw err;
+    }
+  }
+
+  private _emitModifyDocument(
+    type: string,
+    action: "get" | "create" | "update" | "delete",
+    operation: Record<string, unknown>,
+  ): Promise<DocumentSocketResponse> {
     const request: DocumentSocketRequest = { type, action, operation };
     return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error("Not connected to Foundry VTT"));
+        return;
+      }
+
       const timeout = setTimeout(() => {
         reject(new Error(`Foundry socket request timed out after 30s`));
       }, 30000);
 
-      this.socket!.emit(
+      this.socket.emit(
         "modifyDocument",
         request,
         (response: DocumentSocketResponse) => {
@@ -228,15 +265,32 @@ export class FoundryClient {
 
       this.socket.on("disconnect", (reason: string) => {
         this._state = "disconnected";
-        // Socket.io will auto-reconnect if configured
+        // Server kicked us - need to re-authenticate
         if (reason === "io server disconnect") {
-          // Server kicked us - need to re-authenticate
           this.sessionId = null;
         }
       });
 
       this.socket.on("reconnect", () => {
-        this._state = "ready";
+        // Don't blindly set ready — wait for session event to confirm
+        const sessionTimeout = setTimeout(() => {
+          this._state = "disconnected";
+          this.sessionId = null;
+        }, 5000);
+
+        this.socket!.once(
+          "session",
+          (data: { sessionId: string; userId: string } | null) => {
+            clearTimeout(sessionTimeout);
+            if (data && data.userId) {
+              this._userId = data.userId;
+              this._state = "ready";
+            } else {
+              this._state = "disconnected";
+              this.sessionId = null;
+            }
+          },
+        );
       });
     });
   }
