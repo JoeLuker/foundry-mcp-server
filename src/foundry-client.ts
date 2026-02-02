@@ -119,6 +119,33 @@ export class FoundryClient {
     return { path: result.path };
   }
 
+  /**
+   * Emit a generic socket event with a callback response.
+   * Used for non-modifyDocument events (e.g., manageCompendium).
+   */
+  async emitSocket(
+    event: string,
+    data: Record<string, unknown>,
+  ): Promise<unknown> {
+    await this.ensureConnected();
+
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error("Not connected to Foundry VTT"));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error(`Foundry socket request "${event}" timed out after 30s`));
+      }, 30000);
+
+      this.socket.emit(event, data, (response: unknown) => {
+        clearTimeout(timeout);
+        resolve(response);
+      });
+    });
+  }
+
   async modifyDocument(
     type: string,
     action: "get" | "create" | "update" | "delete",

@@ -9,6 +9,8 @@ import { registerEmbeddedTools } from "./tools/embedded.js";
 import { registerChatTools } from "./tools/chat.js";
 import { registerUploadTools } from "./tools/uploads.js";
 import { registerMacroTools } from "./tools/macros.js";
+import { registerCompendiumTools } from "./tools/compendiums.js";
+import { registerResources } from "./resources.js";
 import type { FoundryConfig } from "./types.js";
 
 const config: FoundryConfig = {
@@ -29,7 +31,7 @@ const foundryClient = new FoundryClient(config);
 
 const server = new McpServer({
   name: "foundry-vtt",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 // Register all tools
@@ -39,6 +41,10 @@ registerEmbeddedTools(server, foundryClient);
 registerChatTools(server, foundryClient);
 registerUploadTools(server, foundryClient);
 registerMacroTools(server, foundryClient);
+registerCompendiumTools(server, foundryClient);
+
+// Register MCP resources
+registerResources(server, foundryClient);
 
 // Connect MCP transport
 const transport = new StdioServerTransport();

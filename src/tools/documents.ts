@@ -2,35 +2,9 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { DOCUMENT_TYPES } from "../types.js";
+import { pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
 
 const documentTypeSchema = z.enum(DOCUMENT_TYPES);
-
-function pickFields(
-  doc: Record<string, unknown>,
-  fields?: string[],
-): Record<string, unknown> {
-  if (!fields || fields.length === 0) return doc;
-  const result: Record<string, unknown> = {};
-  for (const field of fields) {
-    if (field.includes(".")) {
-      // Support dot-notation access for nested fields
-      const parts = field.split(".");
-      let value: unknown = doc;
-      for (const part of parts) {
-        if (value && typeof value === "object" && part in value) {
-          value = (value as Record<string, unknown>)[part];
-        } else {
-          value = undefined;
-          break;
-        }
-      }
-      result[field] = value;
-    } else {
-      result[field] = doc[field];
-    }
-  }
-  return result;
-}
 
 export function registerDocumentTools(
   server: McpServer,
@@ -71,19 +45,16 @@ export function registerDocumentTools(
         .describe("Pagination offset"),
     },
     async ({ documentType, fields, type, folder, limit, offset }) => {
+      // Push filters to server-side query
+      const query: Record<string, unknown> = {};
+      if (type) query.type = type;
+      if (folder) query.folder = folder;
+
       const response = await client.modifyDocument(documentType, "get", {
-        query: {},
+        query,
       });
 
       let docs = (response.result || []) as Record<string, unknown>[];
-
-      // Apply filters
-      if (type) {
-        docs = docs.filter((d) => d.type === type);
-      }
-      if (folder) {
-        docs = docs.filter((d) => d.folder === folder);
-      }
 
       // Paginate
       const total = docs.length;
@@ -169,46 +140,24 @@ export function registerDocumentTools(
       limit: z.number().min(1).max(200).optional().default(20),
     },
     async ({ documentType, namePattern, filters, fields, limit }) => {
+      // Split filters: top-level keys go to server, dot-notation stays client-side
+      const { serverQuery, clientFilters } = filters
+        ? splitFilters(filters)
+        : { serverQuery: {}, clientFilters: {} };
+
       const response = await client.modifyDocument(documentType, "get", {
-        query: {},
+        query: serverQuery,
       });
 
       let docs = (response.result || []) as Record<string, unknown>[];
 
-      // Filter by name
+      // Filter by name (client-side only -- Foundry query doesn't support regex)
       if (namePattern) {
-        try {
-          const regex = new RegExp(namePattern, "i");
-          docs = docs.filter((d) => typeof d.name === "string" && regex.test(d.name));
-        } catch {
-          // Fall back to substring match
-          const lower = namePattern.toLowerCase();
-          docs = docs.filter(
-            (d) =>
-              typeof d.name === "string" &&
-              d.name.toLowerCase().includes(lower),
-          );
-        }
+        docs = filterByName(docs, namePattern);
       }
 
-      // Apply field filters
-      if (filters) {
-        docs = docs.filter((d) => {
-          for (const [key, expected] of Object.entries(filters)) {
-            let value: unknown = d;
-            for (const part of key.split(".")) {
-              if (value && typeof value === "object" && part in value) {
-                value = (value as Record<string, unknown>)[part];
-              } else {
-                value = undefined;
-                break;
-              }
-            }
-            if (value !== expected) return false;
-          }
-          return true;
-        });
-      }
+      // Apply remaining client-side filters (dot-notation nested fields)
+      docs = applyClientFilters(docs, clientFilters);
 
       // Limit
       const total = docs.length;

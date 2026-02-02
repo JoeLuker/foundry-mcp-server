@@ -2,6 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { DOCUMENT_TYPES, EMBEDDED_DOCUMENT_TYPES } from "../types.js";
+import { pickFields } from "../utils.js";
 
 const parentTypeSchema = z.enum(DOCUMENT_TYPES);
 const embeddedTypeSchema = z.enum(EMBEDDED_DOCUMENT_TYPES);
@@ -32,13 +33,7 @@ export function registerEmbeddedTools(
       const defaultFields = ["_id", "name", "type"];
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
 
-      const results = docs.map((d) => {
-        const result: Record<string, unknown> = {};
-        for (const field of selectedFields) {
-          result[field] = d[field];
-        }
-        return result;
-      });
+      const results = docs.map((d) => pickFields(d, selectedFields));
 
       return {
         content: [
