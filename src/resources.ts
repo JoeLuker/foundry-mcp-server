@@ -92,6 +92,46 @@ export function registerResources(
     documentType: "Item",
     description: "World item data including type, description, and system data",
   });
+
+  registerDocumentResource(server, client, {
+    name: "macro",
+    uriPattern: "foundry://macros/{macroId}",
+    variableName: "macroId",
+    documentType: "Macro",
+    description: "Macro document with script content and metadata",
+  });
+
+  registerDocumentResource(server, client, {
+    name: "playlist",
+    uriPattern: "foundry://playlists/{playlistId}",
+    variableName: "playlistId",
+    documentType: "Playlist",
+    description: "Playlist with sound entries and playback settings",
+  });
+
+  registerDocumentResource(server, client, {
+    name: "rolltable",
+    uriPattern: "foundry://rolltables/{rolltableId}",
+    variableName: "rolltableId",
+    documentType: "RollTable",
+    description: "Roll table with results and formula",
+  });
+
+  registerDocumentResource(server, client, {
+    name: "combat",
+    uriPattern: "foundry://combats/{combatId}",
+    variableName: "combatId",
+    documentType: "Combat",
+    description: "Combat encounter with combatants and turn order",
+  });
+
+  registerDocumentResource(server, client, {
+    name: "cards",
+    uriPattern: "foundry://cards/{cardsId}",
+    variableName: "cardsId",
+    documentType: "Cards",
+    description: "Card stack with card entries and deck settings",
+  });
 }
 
 /** Register a dynamic document resource template with list + autocomplete. */

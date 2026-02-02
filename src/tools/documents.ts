@@ -181,12 +181,13 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_create_document_batch",
-    "Create multiple documents in a single operation.",
+    "Create multiple documents in a single operation (max 100).",
     {
       documentType: documentTypeSchema.describe("Document type"),
       data: z
         .array(z.record(z.unknown()))
-        .describe("Array of document data objects. Each must include 'name' at minimum."),
+        .max(100)
+        .describe("Array of document data objects (max 100). Each must include 'name' at minimum."),
     },
     async ({ documentType, data }) => {
       const response = await client.modifyDocument(documentType, "create", {
@@ -208,12 +209,13 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_update_document_batch",
-    "Update multiple documents in a single operation. Each object in the updates array must include _id.",
+    "Update multiple documents in a single operation (max 100). Each object in the updates array must include _id.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       updates: z
         .array(z.record(z.unknown()))
-        .describe("Array of update objects, each must include _id"),
+        .max(100)
+        .describe("Array of update objects (max 100), each must include _id"),
     },
     async ({ documentType, updates }) => {
       for (const u of updates) {
@@ -238,10 +240,10 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_delete_document_batch",
-    "Delete multiple documents in a single operation.",
+    "Delete multiple documents in a single operation (max 100).",
     {
       documentType: documentTypeSchema.describe("Document type"),
-      ids: z.array(z.string()).describe("Array of document _ids to delete"),
+      ids: z.array(z.string()).max(100).describe("Array of document _ids to delete (max 100)"),
     },
     async ({ documentType, ids }) => {
       const response = await client.modifyDocument(documentType, "delete", {

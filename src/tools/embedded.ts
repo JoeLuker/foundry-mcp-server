@@ -4,9 +4,6 @@ import { FoundryClient } from "../foundry-client.js";
 import { documentTypeSchema, embeddedDocumentTypeSchema } from "../types.js";
 import { pickFields } from "../utils.js";
 
-const parentTypeSchema = documentTypeSchema;
-const embeddedTypeSchema = embeddedDocumentTypeSchema;
-
 export function registerEmbeddedTools(
   server: McpServer,
   client: FoundryClient,
@@ -15,9 +12,9 @@ export function registerEmbeddedTools(
     "foundry_list_embedded",
     "List embedded documents within a parent (e.g., Items on an Actor, Tokens on a Scene)",
     {
-      parentType: parentTypeSchema.describe("Parent document type (e.g., Actor, Scene)"),
+      parentType: documentTypeSchema.describe("Parent document type (e.g., Actor, Scene)"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type (e.g., Item, ActiveEffect, Token)"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type (e.g., Item, ActiveEffect, Token)"),
       fields: z
         .array(z.string())
         .optional()
@@ -50,9 +47,9 @@ export function registerEmbeddedTools(
     "foundry_create_embedded",
     "Create an embedded document within a parent (e.g., add an Item to an Actor)",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
       data: z.record(z.unknown()).describe("Embedded document data"),
     },
     async ({ parentType, parentId, embeddedType, data }) => {
@@ -77,12 +74,12 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_create_embedded_batch",
-    "Create multiple embedded documents in a single operation (e.g., batch-add Walls, Tiles, or Lights to a Scene). Much faster than individual creates.",
+    "Create multiple embedded documents in a single operation (max 100, e.g., batch-add Walls, Tiles, or Lights to a Scene). Much faster than individual creates.",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
-      data: z.array(z.record(z.unknown())).describe("Array of embedded document data objects"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
+      data: z.array(z.record(z.unknown())).max(100).describe("Array of embedded document data objects (max 100)"),
     },
     async ({ parentType, parentId, embeddedType, data }) => {
       const response = await client.modifyDocument(embeddedType, "create", {
@@ -105,12 +102,12 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_update_embedded_batch",
-    "Update multiple embedded documents in a single operation. Each object in the updates array must include _id.",
+    "Update multiple embedded documents in a single operation (max 100). Each object in the updates array must include _id.",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
-      updates: z.array(z.record(z.unknown())).describe("Array of update objects, each must include _id"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
+      updates: z.array(z.record(z.unknown())).max(100).describe("Array of update objects (max 100), each must include _id"),
     },
     async ({ parentType, parentId, embeddedType, updates }) => {
       for (const u of updates) {
@@ -136,12 +133,12 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_delete_embedded_batch",
-    "Delete multiple embedded documents in a single operation.",
+    "Delete multiple embedded documents in a single operation (max 100).",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
-      ids: z.array(z.string()).describe("Array of embedded document _ids to delete"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
+      ids: z.array(z.string()).max(100).describe("Array of embedded document _ids to delete (max 100)"),
     },
     async ({ parentType, parentId, embeddedType, ids }) => {
       const response = await client.modifyDocument(embeddedType, "delete", {
@@ -167,9 +164,9 @@ export function registerEmbeddedTools(
     "foundry_update_embedded",
     "Update an embedded document within a parent",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
       id: z.string().describe("Embedded document _id"),
       updates: z.record(z.unknown()).describe("Partial update object"),
     },
@@ -195,9 +192,9 @@ export function registerEmbeddedTools(
     "foundry_delete_embedded",
     "Delete an embedded document from its parent",
     {
-      parentType: parentTypeSchema.describe("Parent document type"),
+      parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
-      embeddedType: embeddedTypeSchema.describe("Embedded document type"),
+      embeddedType: embeddedDocumentTypeSchema.describe("Embedded document type"),
       id: z.string().describe("Embedded document _id to delete"),
     },
     async ({ parentType, parentId, embeddedType, id }) => {

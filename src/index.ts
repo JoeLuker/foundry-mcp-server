@@ -31,7 +31,7 @@ const foundryClient = new FoundryClient(config);
 
 const server = new McpServer({
   name: "foundry-vtt",
-  version: "0.3.0",
+  version: "0.4.0",
 });
 
 // Register all tools
