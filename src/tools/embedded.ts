@@ -10,7 +10,7 @@ export function registerEmbeddedTools(
 ): void {
   server.tool(
     "foundry_list_embedded",
-    "List embedded documents within a parent (e.g., Items on an Actor, Tokens on a Scene)",
+    "List embedded documents within a parent document. Common combinations: Items/ActiveEffects on an Actor, Tokens/Walls/Lights/Tiles on a Scene, Pages on a JournalEntry, Sounds on a Playlist, Results on a RollTable.",
     {
       parentType: documentTypeSchema.describe("Parent document type (e.g., Actor, Scene)"),
       parentId: z.string().describe("Parent document _id"),
@@ -45,7 +45,7 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_create_embedded",
-    "Create an embedded document within a parent (e.g., add an Item to an Actor)",
+    "Create an embedded document within a parent (e.g., add an Item to an Actor, a Token to a Scene, an ActiveEffect to an Actor, a Page to a JournalEntry).",
     {
       parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
@@ -162,7 +162,7 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_update_embedded",
-    "Update an embedded document within a parent",
+    "Update an embedded document within a parent. Supports dot-notation for nested fields (e.g., update a Token's position with 'x' and 'y', or an Item's 'system.quantity' on an Actor).",
     {
       parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),
@@ -190,7 +190,7 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_delete_embedded",
-    "Delete an embedded document from its parent",
+    "Delete an embedded document from its parent (e.g., remove an Item from an Actor, a Token from a Scene).",
     {
       parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),

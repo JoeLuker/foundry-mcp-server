@@ -8,7 +8,7 @@ export function registerChatTools(
 ): void {
   server.tool(
     "foundry_send_chat",
-    "Send a chat message to the Foundry VTT game",
+    "Send a chat message to the Foundry VTT game. Supports HTML content, in-character (IC) speech, out-of-character (OOC) messages, emotes, and whispers to specific users.",
     {
       content: z.string().describe("Message content (supports HTML)"),
       speaker: z
@@ -63,11 +63,11 @@ export function registerChatTools(
 
   server.tool(
     "foundry_roll_dice",
-    "Roll dice using Foundry VTT's dice system via an inline roll in a chat message",
+    "Roll dice using Foundry VTT's dice engine via a chat message. Supports standard dice notation, modifiers, and Foundry-specific syntax.",
     {
       formula: z
         .string()
-        .describe("Dice formula (e.g., '2d6+5', '1d20+12', '4d6kh3')"),
+        .describe("Dice formula (e.g., '2d6+5', '1d20+12', '4d6kh3' for keep highest 3, '1d20cs>=19' for critical success range)"),
       flavor: z.string().optional().describe("Description text for the roll"),
       speaker: z
         .object({

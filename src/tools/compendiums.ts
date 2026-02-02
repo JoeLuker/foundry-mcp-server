@@ -171,7 +171,7 @@ const msg = await ChatMessage.create({
 
   server.tool(
     "foundry_get_compendium_index",
-    "Get the index (lightweight listing) of entries in a compendium pack",
+    "Get the index (lightweight listing) of entries in a compendium pack. Returns summaries with pagination. Use this to browse pack contents before fetching full entries.",
     {
       packId: z
         .string()
@@ -231,7 +231,7 @@ const msg = await ChatMessage.create({
 
   server.tool(
     "foundry_get_compendium_entry",
-    "Get a full document entry from a compendium pack by ID",
+    "Get a full document entry from a compendium pack by ID. Returns complete data including system-specific fields.",
     {
       packId: z.string().describe("Compendium pack ID"),
       documentType: documentTypeSchema.describe("Document type stored in the pack"),
@@ -277,7 +277,7 @@ const msg = await ChatMessage.create({
 
   server.tool(
     "foundry_search_compendium",
-    "Search entries in a compendium pack by name pattern and optional filters",
+    "Search entries in a compendium pack by name pattern (substring or regex) and optional field filters. Supports dot-notation for nested system data filters.",
     {
       packId: z.string().describe("Compendium pack ID"),
       documentType: documentTypeSchema.describe("Document type stored in the pack"),
