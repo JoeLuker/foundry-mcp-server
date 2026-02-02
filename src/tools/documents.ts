@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
-import { DOCUMENT_TYPES } from "../types.js";
+import { documentTypeSchema } from "../types.js";
 import { pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
-
-const documentTypeSchema = z.enum(DOCUMENT_TYPES);
 
 export function registerDocumentTools(
   server: McpServer,

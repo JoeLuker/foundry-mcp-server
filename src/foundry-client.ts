@@ -122,6 +122,7 @@ export class FoundryClient {
   /**
    * Emit a generic socket event with a callback response.
    * Used for non-modifyDocument events (e.g., manageCompendium).
+   * Retries once on timeout/disconnect errors (same as modifyDocument).
    */
   async emitSocket(
     event: string,
@@ -129,6 +130,33 @@ export class FoundryClient {
   ): Promise<unknown> {
     await this.ensureConnected();
 
+    try {
+      return await this._emitSocket(event, data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.includes("timed out") ||
+        message.includes("disconnected") ||
+        message.includes("Not connected") ||
+        !this.socket?.connected
+      ) {
+        this._state = "disconnected";
+        this.sessionId = null;
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
+        await this.ensureConnected();
+        return await this._emitSocket(event, data);
+      }
+      throw err;
+    }
+  }
+
+  private _emitSocket(
+    event: string,
+    data: Record<string, unknown>,
+  ): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (!this.socket?.connected) {
         reject(new Error("Not connected to Foundry VTT"));

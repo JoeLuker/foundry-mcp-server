@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
-import { DOCUMENT_TYPES, EMBEDDED_DOCUMENT_TYPES } from "../types.js";
+import { documentTypeSchema, embeddedDocumentTypeSchema } from "../types.js";
 import { pickFields } from "../utils.js";
 
-const parentTypeSchema = z.enum(DOCUMENT_TYPES);
-const embeddedTypeSchema = z.enum(EMBEDDED_DOCUMENT_TYPES);
+const parentTypeSchema = documentTypeSchema;
+const embeddedTypeSchema = embeddedDocumentTypeSchema;
 
 export function registerEmbeddedTools(
   server: McpServer,

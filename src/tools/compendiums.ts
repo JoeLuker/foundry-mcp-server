@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
-import { DOCUMENT_TYPES } from "../types.js";
+import { documentTypeSchema } from "../types.js";
 import { pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
-
-const documentTypeSchema = z.enum(DOCUMENT_TYPES);
 
 export function registerCompendiumTools(
   server: McpServer,
@@ -93,20 +91,28 @@ const msg = await ChatMessage.create({
           ],
         });
 
-        // Step 3: Wait briefly then look for the result message
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Step 3: Poll for the result message with retries
+        const POLL_INTERVAL_MS = 500;
+        const MAX_ATTEMPTS = 12; // 6 seconds total
+        let resultMsg: Record<string, unknown> | undefined;
 
-        const chatResponse = await client.modifyDocument("ChatMessage", "get", {
-          query: {},
-        });
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
 
-        const messages = (chatResponse.result || []) as Record<string, unknown>[];
-        const resultMsg = messages
-          .reverse()
-          .find((m) => {
-            const content = m.content as string | undefined;
-            return content?.startsWith("MCP_PACK_LIST:");
+          const chatResponse = await client.modifyDocument("ChatMessage", "get", {
+            query: {},
           });
+
+          const messages = (chatResponse.result || []) as Record<string, unknown>[];
+          resultMsg = messages
+            .reverse()
+            .find((m) => {
+              const content = m.content as string | undefined;
+              return content?.startsWith("MCP_PACK_LIST:");
+            });
+
+          if (resultMsg) break;
+        }
 
         if (resultMsg) {
           const content = resultMsg.content as string;
@@ -143,7 +149,7 @@ const msg = await ChatMessage.create({
             {
               type: "text" as const,
               text: JSON.stringify({
-                error: "Pack enumeration requires a connected browser client to execute the macro. Provide pack IDs directly to other compendium tools.",
+                error: "Pack enumeration timed out. This requires a connected browser client to execute the macro. Provide pack IDs directly to other compendium tools.",
                 hint: 'Pack IDs follow the format "{packageName}.{packName}" (e.g., "pf1.spells", "pf1.items")',
               }, null, 2),
             },

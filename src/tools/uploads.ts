@@ -28,12 +28,12 @@ export function registerUploadTools(
         .describe("MIME type of the file (e.g., 'image/svg+xml', 'image/png')"),
       targetPath: z
         .string()
-        .default("worlds/scarred-frontier/scenes")
+        .optional()
         .describe(
-          "Destination directory path within the Foundry data source (e.g., 'worlds/scarred-frontier/scenes')",
+          "Destination directory path within the Foundry data source (e.g., 'worlds/my-world/scenes'). Defaults to the active world's root directory.",
         ),
     },
-    async ({ fileName, base64Content, localPath, mimeType, targetPath }) => {
+    async ({ fileName, base64Content, localPath, mimeType, targetPath: targetPathArg }) => {
       if (!base64Content && !localPath) {
         return {
           content: [
@@ -47,6 +47,10 @@ export function registerUploadTools(
           isError: true,
         };
       }
+
+      await client.ensureConnected();
+      const worldName = client.worldInfo?.world ?? "default";
+      const targetPath = targetPathArg ?? `worlds/${worldName}`;
 
       let nodeBuffer: Buffer;
 

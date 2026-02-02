@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface FoundryConfig {
   url: string;
   userId: string;
@@ -56,6 +58,7 @@ export const DOCUMENT_TYPES = [
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+export const documentTypeSchema = z.enum(DOCUMENT_TYPES);
 
 export const EMBEDDED_DOCUMENT_TYPES = [
   "ActiveEffect",
@@ -80,3 +83,4 @@ export const EMBEDDED_DOCUMENT_TYPES = [
 ] as const;
 
 export type EmbeddedDocumentType = (typeof EMBEDDED_DOCUMENT_TYPES)[number];
+export const embeddedDocumentTypeSchema = z.enum(EMBEDDED_DOCUMENT_TYPES);
