@@ -20,22 +20,6 @@ export function registerCompendiumTools(
         ),
     },
     async ({ type }) => {
-      // Enumerate packs by creating a temporary macro that reads game.packs
-      const userId = client.userId;
-      if (!userId) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: "Not authenticated - no userId available" }),
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      // Create a macro that writes pack info to a chat message
-      const macroName = `_mcp_list_packs_${Date.now()}`;
       const script = `
 const packs = game.packs.map(p => ({
   id: p.collection,
@@ -45,127 +29,44 @@ const packs = game.packs.map(p => ({
   packageType: p.metadata.packageType,
   count: p.index?.size ?? null,
 }));
-const msg = await ChatMessage.create({
+await ChatMessage.create({
   content: "MCP_PACK_LIST:" + JSON.stringify(packs),
   whisper: [game.userId],
   type: CONST.CHAT_MESSAGE_STYLES.OTHER,
 });
 `;
 
-      // Step 1: Create temp macro
-      const createResponse = await client.modifyDocument("Macro", "create", {
-        data: [
-          {
-            name: macroName,
-            type: "script",
-            command: script,
-            author: userId,
-          },
-        ],
-      });
+      const result = await client.executeMacroWithResult(script, "MCP_PACK_LIST:");
 
-      const macro = (createResponse.result || [])[0] as Record<string, unknown>;
-      if (!macro?._id) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: "Failed to create pack enumeration macro" }),
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const macroId = macro._id as string;
-
-      try {
-        // Step 2: Execute via chat message
-        await client.modifyDocument("ChatMessage", "create", {
-          data: [
-            {
-              content: `<script>game.macros.get("${macroId}")?.execute();</script>`,
-              author: userId,
-              type: 0,
-            },
-          ],
-        });
-
-        // Step 3: Poll for the result message with retries
-        const POLL_INTERVAL_MS = 500;
-        const MAX_ATTEMPTS = 12; // 6 seconds total
-        let resultMsg: Record<string, unknown> | undefined;
-
-        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-
-          const chatResponse = await client.modifyDocument("ChatMessage", "get", {
-            query: {},
-          });
-
-          const messages = (chatResponse.result || []) as Record<string, unknown>[];
-          resultMsg = messages
-            .reverse()
-            .find((m) => {
-              const content = m.content as string | undefined;
-              return content?.startsWith("MCP_PACK_LIST:");
-            });
-
-          if (resultMsg) break;
-        }
-
-        if (resultMsg) {
-          const content = resultMsg.content as string;
-          const jsonStr = content.replace("MCP_PACK_LIST:", "");
-          let packs = JSON.parse(jsonStr) as Array<Record<string, unknown>>;
-
-          // Clean up the result message
-          try {
-            await client.modifyDocument("ChatMessage", "delete", {
-              ids: [resultMsg._id as string],
-            });
-          } catch {
-            // Best-effort cleanup
-          }
-
-          // Apply type filter
-          if (type) {
-            packs = packs.filter((p) => p.type === type);
-          }
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify({ total: packs.length, packs }, null, 2),
-              },
-            ],
-          };
-        }
-
-        // Fallback: macro execution may not have worked (no connected browser client)
+      if (!result.success) {
         return {
           content: [
             {
               type: "text" as const,
               text: JSON.stringify({
-                error: "Pack enumeration timed out. This requires a connected browser client to execute the macro. Provide pack IDs directly to other compendium tools.",
+                error: result.error,
                 hint: 'Pack IDs follow the format "{packageName}.{packName}" (e.g., "pf1.spells", "pf1.items")',
               }, null, 2),
             },
           ],
           isError: true,
         };
-      } finally {
-        // Cleanup: delete temp macro
-        try {
-          await client.modifyDocument("Macro", "delete", {
-            ids: [macroId],
-          });
-        } catch {
-          // Best-effort cleanup
-        }
       }
+
+      let packs = result.data as Array<Record<string, unknown>>;
+
+      if (type) {
+        packs = packs.filter((p) => p.type === type);
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ total: packs.length, packs }, null, 2),
+          },
+        ],
+      };
     },
   );
 

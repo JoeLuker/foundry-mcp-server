@@ -120,6 +120,115 @@ export class FoundryClient {
   }
 
   /**
+   * Execute a JavaScript script in Foundry's game context via a temporary macro,
+   * returning parsed results via a ChatMessage workaround.
+   *
+   * The script MUST create a ChatMessage whose content starts with `resultPrefix`
+   * followed by JSON data. This method polls for that message, parses it, and
+   * cleans up the temporary macro and result message.
+   */
+  async executeMacroWithResult(
+    script: string,
+    resultPrefix: string,
+    timeoutMs = 6000,
+  ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+    await this.ensureConnected();
+
+    const userId = this._userId;
+    if (!userId) {
+      return { success: false, error: "Not authenticated — no userId available" };
+    }
+
+    const macroName = `_mcp_${Date.now()}`;
+
+    // Step 1: Create temp macro
+    const createResponse = await this.modifyDocument("Macro", "create", {
+      data: [
+        {
+          name: macroName,
+          type: "script",
+          command: script,
+          author: userId,
+        },
+      ],
+    });
+
+    const macro = (createResponse.result || [])[0] as Record<string, unknown>;
+    if (!macro?._id) {
+      return { success: false, error: "Failed to create temporary macro" };
+    }
+
+    const macroId = macro._id as string;
+
+    try {
+      // Step 2: Execute via ChatMessage script tag
+      await this.modifyDocument("ChatMessage", "create", {
+        data: [
+          {
+            content: `<script>game.macros.get("${macroId}")?.execute();</script>`,
+            author: userId,
+            type: 0,
+          },
+        ],
+      });
+
+      // Step 3: Poll for result message
+      const POLL_INTERVAL_MS = 500;
+      const maxAttempts = Math.ceil(timeoutMs / POLL_INTERVAL_MS);
+      let resultMsg: Record<string, unknown> | undefined;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+        const chatResponse = await this.modifyDocument("ChatMessage", "get", {
+          query: {},
+        });
+
+        const messages = (chatResponse.result || []) as Record<string, unknown>[];
+        resultMsg = messages
+          .reverse()
+          .find((m) => {
+            const content = m.content as string | undefined;
+            return content?.startsWith(resultPrefix);
+          });
+
+        if (resultMsg) break;
+      }
+
+      if (!resultMsg) {
+        return {
+          success: false,
+          error:
+            "Macro execution timed out. This requires a connected browser client to execute macros.",
+        };
+      }
+
+      // Parse result
+      const content = resultMsg.content as string;
+      const jsonStr = content.slice(resultPrefix.length);
+      const data = JSON.parse(jsonStr);
+
+      // Cleanup result message
+      try {
+        await this.modifyDocument("ChatMessage", "delete", {
+          ids: [resultMsg._id as string],
+        });
+      } catch {
+        // Best-effort cleanup
+      }
+
+      return { success: true, data };
+    } finally {
+      // Cleanup temp macro
+      try {
+        await this.modifyDocument("Macro", "delete", { ids: [macroId] });
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }
+
+  /**
    * Emit a generic socket event with a callback response.
    * Used for non-modifyDocument events (e.g., manageCompendium).
    * Retries once on timeout/disconnect errors (same as modifyDocument).

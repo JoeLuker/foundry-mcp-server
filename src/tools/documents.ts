@@ -266,7 +266,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_create_document",
-    "Create a new document in the Foundry VTT world. Must include 'name' at minimum. Can include 'type', 'folder', and system-specific data.",
+    "Create a new document in the Foundry VTT world. Must include 'name' at minimum. Can include 'type', 'folder', and system-specific data. Also used to create Folders (documentType='Folder', data={name, type:'Actor', parent:null}).",
     {
       documentType: documentTypeSchema.describe("Document type"),
       data: z
@@ -294,7 +294,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_update_document",
-    "Update an existing document with partial data. Supports dot-notation for nested system fields (e.g., 'system.attributes.hp.value', 'system.details.level.value').",
+    "Update an existing document with partial data. Supports dot-notation for nested system fields (e.g., 'system.attributes.hp.value'). Also works for User role changes (updates={role:4}) and Setting values.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       id: z.string().describe("Document _id"),

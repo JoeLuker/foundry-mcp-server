@@ -5,7 +5,7 @@ MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via
 ## Features
 
 - **Direct connection** to Foundry VTT via Socket.IO with HTTP session authentication
-- **30 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file uploads, macro execution, and compendium access
+- **41 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file uploads, macro execution, compendium access, scene management, combat workflow, game state control, and convenience operations
 - **9 MCP resources** for browsing world data (actors, journals, scenes, items, macros, playlists, roll tables, combats, cards)
 - **System-agnostic** — works with any game system (PF1e, PF2e, D&D 5e, etc.)
 - **Automatic reconnection** with retry logic on timeout/disconnect
@@ -130,6 +130,39 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_get_compendium_index` | Get pack index (lightweight listing) |
 | `foundry_get_compendium_entry` | Get a full entry from a pack |
 | `foundry_search_compendium` | Search pack entries by name/filters |
+| `foundry_import_from_compendium` | Import an entry from a pack into the world |
+
+### Scene Management
+
+| Tool | Description |
+|------|-------------|
+| `foundry_activate_scene` | Activate a scene for all players |
+| `foundry_place_token` | Place an actor's token on a scene at x,y |
+
+### Combat
+
+| Tool | Description |
+|------|-------------|
+| `foundry_roll_initiative` | Roll initiative for combatants (all or specific) |
+| `foundry_advance_combat` | Navigate turns/rounds (next/previous) |
+| `foundry_control_combat` | Start or end a combat encounter |
+
+### Game State
+
+| Tool | Description |
+|------|-------------|
+| `foundry_toggle_pause` | Pause or unpause the game |
+| `foundry_control_playlist` | Play/stop playlists or individual sounds |
+| `foundry_list_online_users` | List currently connected users |
+
+### Convenience
+
+| Tool | Description |
+|------|-------------|
+| `foundry_create_journal` | Create a journal entry with pages in one call |
+| `foundry_modify_actor_hp` | Apply damage/healing to an actor's HP |
+
+> **Note:** Tools marked as requiring a "connected browser client" (combat, pause, online users, initiative) use a macro execution workaround that needs at least one browser tab open to the Foundry world.
 
 ## Development
 
