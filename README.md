@@ -5,7 +5,7 @@ MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via
 ## Features
 
 - **Direct connection** to Foundry VTT via Socket.IO with HTTP session authentication
-- **45 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file management, macro execution, compendium access, scene management, combat workflow, game state control, presentation, admin, and convenience operations
+- **63 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file management, macro execution, compendium access, scene management, combat workflow, game state control, presentation, admin, token manipulation, lighting/walls, active effects, roll tables, and card decks
 - **9 MCP resources** for browsing world data (actors, journals, scenes, items, macros, playlists, roll tables, combats, cards)
 - **System-agnostic** — works with any game system (PF1e, PF2e, D&D 5e, etc.)
 - **Automatic reconnection** with retry logic on timeout/disconnect
@@ -174,6 +174,44 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_manage_compendium` | Create, delete, or migrate world compendium packs |
 | `foundry_get_world_size` | Get disk usage info for world collections and packs |
 
+### Tokens
+
+| Tool | Description |
+|------|-------------|
+| `foundry_get_token` | Get token details (position, visibility, light, vision) |
+| `foundry_move_token` | Move a token to new pixel coordinates |
+| `foundry_toggle_token_visibility` | Hide/reveal a token (GM-only visibility) |
+| `foundry_update_token` | Update any token properties (light, sight, display, etc.) |
+| `foundry_toggle_token_status` | Toggle status effects (conditions) on a token's actor |
+
+### Lighting & Walls
+
+| Tool | Description |
+|------|-------------|
+| `foundry_create_light` | Create an ambient light source on a scene |
+| `foundry_create_wall` | Create a wall segment (movement, vision, light, sound blocking) |
+| `foundry_toggle_door` | Open, close, or lock a door wall |
+| `foundry_update_scene_config` | Update scene properties (darkness, grid, weather, etc.) |
+
+### Active Effects
+
+| Tool | Description |
+|------|-------------|
+| `foundry_list_active_effects` | List all effects on an actor (buffs, debuffs, conditions) |
+| `foundry_apply_active_effect` | Apply a new effect with attribute changes and duration |
+| `foundry_remove_active_effect` | Remove an effect from an actor |
+| `foundry_toggle_active_effect` | Enable/disable an effect without removing it |
+
+### Roll Tables & Cards
+
+| Tool | Description |
+|------|-------------|
+| `foundry_roll_table` | Roll on a RollTable and get matched results |
+| `foundry_list_table_results` | List all possible results on a RollTable |
+| `foundry_shuffle_deck` | Shuffle a card deck, optionally recalling dealt cards |
+| `foundry_deal_cards` | Deal cards from a deck to a hand/pile |
+| `foundry_pass_cards` | Move cards between hands/piles/decks |
+
 ### Convenience
 
 | Tool | Description |
@@ -188,6 +226,7 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 ```bash
 npm run dev    # Run with tsx (auto-compiles TypeScript)
 npm run build  # Compile to dist/
+npm test       # Run unit tests (171 tests)
 npm start      # Run compiled version
 ```
 
