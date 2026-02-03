@@ -10,7 +10,7 @@ export function registerDocumentTools(
 ): void {
   server.tool(
     "foundry_list_documents",
-    "List documents of a given type from the Foundry VTT world. Returns summaries by default. Use fields param with dot-notation to access nested system data (e.g., 'system.attributes.hp.value' for PF1e actor HP).",
+    "Primary way to browse world content. List documents of a given type from the Foundry VTT world. Returns summaries by default. Use fields param with dot-notation to access nested system data (e.g., 'system.attributes.hp.value' for PF1e actor HP). Supports pagination and filtering by sub-type and folder.",
     {
       documentType: documentTypeSchema.describe(
         "Document type (Actor, Item, Scene, JournalEntry, Macro, RollTable, etc.)",
@@ -69,7 +69,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_get_document",
-    "Get a single document by type and ID. Returns full data by default, or use fields param to select specific fields with dot-notation (e.g., 'system.attributes.hp').",
+    "Get a single document by type and ID. Returns the complete document including all system-specific data by default, or use fields param to select specific fields with dot-notation (e.g., 'system.attributes.hp').",
     {
       documentType: documentTypeSchema.describe("Document type"),
       id: z.string().describe("Document _id"),
@@ -99,7 +99,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_search_documents",
-    "Search documents by name pattern (regex or substring) and optional field filters. Supports dot-notation filters for nested system data.",
+    "Search documents by name pattern (regex or substring) and optional field filters. Use this when you know part of a name — more targeted than foundry_list_documents. Supports dot-notation filters for nested system data.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       namePattern: z
@@ -216,7 +216,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_create_document",
-    "Create a new document in the Foundry VTT world. Must include 'name' at minimum. Can include 'type', 'folder', and system-specific data. Also used to create Folders (documentType='Folder', data={name, type:'Actor', parent:null}).",
+    "Create a new document in the Foundry VTT world. Common patterns: Actor ({name, type:'npc'}), Item ({name, type:'weapon'}), Folder ({name, type:'Actor', parent:null}). Must include 'name' at minimum. Can include 'type', 'folder', and system-specific data.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       data: z
@@ -237,7 +237,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_update_document",
-    "Update an existing document with partial data. Supports dot-notation for nested system fields (e.g., 'system.attributes.hp.value'). Also works for User role changes (updates={role:4}) and Setting values.",
+    "Update an existing document with partial data. Examples: rename ({name:'New Name'}), move to folder ({folder:'id'}), change HP ({'system.attributes.hp.value': 25}), set user role ({role:4}). Supports dot-notation for nested system fields.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       id: z.string().describe("Document _id"),
@@ -259,7 +259,7 @@ export function registerDocumentTools(
 
   server.tool(
     "foundry_delete_document",
-    "Delete a document from the Foundry VTT world by type and ID. This is permanent.",
+    "Delete a document from the Foundry VTT world by type and ID. This is permanent and cannot be undone.",
     {
       documentType: documentTypeSchema.describe("Document type"),
       id: z.string().describe("Document _id to delete"),

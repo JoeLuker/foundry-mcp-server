@@ -8,7 +8,7 @@ export function registerWorldTools(
 ): void {
   server.tool(
     "foundry_get_status",
-    "Get Foundry VTT connection status, world info, system, and version",
+    "Check if Foundry VTT is connected and get world metadata. Returns connection state, world name, game system ID (e.g., pf1, dnd5e), Foundry version, and active user count. Call this first to verify connectivity before using other tools.",
     {},
     async () => {
       try {

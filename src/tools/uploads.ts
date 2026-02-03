@@ -10,7 +10,7 @@ export function registerUploadTools(
 ): void {
   server.tool(
     "foundry_upload_file",
-    "Upload a file to the Foundry VTT data directory. Accepts base64-encoded content or a local file path (more efficient for same-machine setups). Useful for scene backgrounds, token images, and other assets.",
+    "Upload a file to the Foundry VTT data directory. Accepts base64-encoded content or a local file path (more efficient for same-machine setups). Defaults to the currently connected world's root directory. Useful for scene backgrounds, token images, and other assets.",
     {
       fileName: z.string().describe("File name with extension (e.g., 'dungeon-map.svg')"),
       base64Content: z

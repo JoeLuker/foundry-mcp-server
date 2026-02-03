@@ -9,7 +9,7 @@ export function registerCombatTools(
 ): void {
   server.tool(
     "foundry_roll_initiative",
-    "Roll initiative for combatants in a combat encounter. Can roll for specific combatants or all without initiative. Uses the combatant's actor initiative modifier when available.",
+    "Roll initiative for combatants in a combat encounter. Can roll for specific combatants or all without initiative. Uses the actor's init modifier from system.attributes.init (PF1e: .total, D&D 5e: .bonus). Combatants with initiative already set are skipped unless explicitly targeted by combatantIds.",
     {
       combatId: z.string().describe("Combat _id"),
       combatantIds: z
@@ -215,7 +215,7 @@ export function registerCombatTools(
 
   server.tool(
     "foundry_control_combat",
-    "Start or end a combat encounter. Starting sets round to 1, turn 0. Ending deletes the combat.",
+    "Start or end a combat encounter. Starting sets round to 1 and turn to 0 (first combatant by initiative order). Ending deletes the Combat document and all Combatants permanently — this cannot be undone.",
     {
       combatId: z.string().describe("Combat _id"),
       action: z

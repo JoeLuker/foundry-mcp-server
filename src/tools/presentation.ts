@@ -9,7 +9,7 @@ export function registerPresentationTools(
 ): void {
   server.tool(
     "foundry_show_journal",
-    "Display a journal entry to players as a popup window. Can target specific users or show to everyone.",
+    "Display a journal entry to players as a popup window. Can target specific users or show to everyone. Users need Observer permission on the journal unless force=true bypasses permission checks.",
     {
       journalId: z.string().describe("JournalEntry _id to show"),
       force: z
@@ -46,7 +46,7 @@ export function registerPresentationTools(
 
   server.tool(
     "foundry_share_image",
-    "Share an image with players as a popup. Useful for showing handouts, maps, or artwork during a session.",
+    "Share an image with players as a popup. Accepts both relative paths within Foundry data (e.g., 'worlds/myworld/handout.webp') and external URLs. Useful for showing handouts, maps, or artwork during a session.",
     {
       image: z
         .string()

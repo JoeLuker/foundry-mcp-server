@@ -10,7 +10,7 @@ export function registerEmbeddedTools(
 ): void {
   server.tool(
     "foundry_list_embedded",
-    "List embedded documents within a parent document. Common combinations: Items/ActiveEffects on an Actor, Tokens/Walls/Lights/Tiles on a Scene, Pages on a JournalEntry, Sounds on a Playlist, Results on a RollTable.",
+    "List embedded documents within a parent document. Use this to see what's on a scene (Tokens, Walls, Lights, Tiles) or what an actor owns (Items, ActiveEffects). Common combinations: Items/ActiveEffects on an Actor, Tokens/Walls/AmbientLight/Tile on a Scene, JournalEntryPage on a JournalEntry, PlaylistSound on a Playlist, TableResult on a RollTable.",
     {
       parentType: documentTypeSchema.describe("Parent document type (e.g., Actor, Scene)"),
       parentId: z.string().describe("Parent document _id"),
@@ -38,7 +38,7 @@ export function registerEmbeddedTools(
 
   server.tool(
     "foundry_create_embedded",
-    "Create an embedded document within a parent (e.g., add an Item to an Actor, a Token to a Scene, an ActiveEffect to an Actor, a Page to a JournalEntry).",
+    "Create an embedded document within a parent (e.g., add an Item to an Actor, an ActiveEffect to an Actor, a Page to a JournalEntry). For placing tokens, prefer foundry_place_token which copies prototype token data (artwork, size, vision) automatically.",
     {
       parentType: documentTypeSchema.describe("Parent document type"),
       parentId: z.string().describe("Parent document _id"),

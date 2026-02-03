@@ -9,7 +9,7 @@ export function registerGameTools(
 ): void {
   server.tool(
     "foundry_toggle_pause",
-    "Pause or unpause the Foundry VTT game for all connected players.",
+    "Pause or unpause the Foundry VTT game for all connected players. When paused, players cannot move tokens or take actions. GMs are unaffected by pause.",
     {
       pause: z.boolean().describe("True to pause, false to unpause"),
     },
@@ -25,7 +25,7 @@ export function registerGameTools(
 
   server.tool(
     "foundry_control_playlist",
-    "Start or stop playback of a playlist or individual sound within a playlist.",
+    "Start or stop playback of a playlist or individual sound within a playlist. To find playlists, use foundry_list_documents with documentType='Playlist'. To find sounds within a playlist, use foundry_list_embedded.",
     {
       playlistId: z.string().describe("Playlist _id"),
       action: z.enum(["play", "stop"]).describe("Play or stop"),
@@ -60,7 +60,7 @@ export function registerGameTools(
 
   server.tool(
     "foundry_list_online_users",
-    "List currently connected (online) users in the Foundry VTT game, including their roles and assigned characters.",
+    "List currently connected (online) users in the Foundry VTT game, including their roles and assigned characters. Roles: 0=None, 1=Player, 2=Trusted, 3=Assistant GM, 4=GM. User IDs from this list work with foundry_send_chat whisper, foundry_pull_to_scene, and foundry_show_journal.",
     {},
     async () => {
       // Use getUserActivity socket event to get active user IDs,

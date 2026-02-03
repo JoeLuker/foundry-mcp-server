@@ -9,7 +9,7 @@ export function registerMacroTools(
 ): void {
   server.tool(
     "foundry_execute_macro",
-    "Execute a JavaScript macro in the Foundry VTT server context. Creates a temporary Macro document and executes it. Note: execution depends on Foundry v13 server-side macro support.",
+    "Execute a JavaScript macro in the Foundry VTT server context. Creates a temporary Macro document, executes it via ChatMessage, and cleans up. IMPORTANT: Requires a GM logged in via browser for execution. Use as a last resort when no dedicated tool exists for the operation you need.",
     {
       script: z.string().describe("JavaScript code to execute in Foundry's context"),
       name: z

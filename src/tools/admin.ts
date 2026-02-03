@@ -9,7 +9,7 @@ export function registerAdminTools(
 ): void {
   server.tool(
     "foundry_browse_files",
-    'Browse files and directories in the Foundry VTT data storage. Returns directory listings with file paths. Use source "data" for the user data directory or "public" for the core public directory.',
+    'Browse files and directories in the Foundry VTT data storage. Returns {dirs: [...], files: [...]} with paths relative to Foundry data root. Use source "data" for the user data directory or "public" for the core public directory.',
     {
       source: z
         .enum(["data", "public", "s3"])
@@ -63,7 +63,7 @@ export function registerAdminTools(
 
   server.tool(
     "foundry_manage_compendium",
-    "Create, delete, or migrate a world-scoped compendium pack. Only works with compendium packs belonging to the current world.",
+    "Create, delete, or migrate a world-scoped compendium pack. Only works with packs belonging to the current world. 'migrate' updates the pack's data model to the current system version.",
     {
       action: z
         .enum(["create", "delete", "migrate"])
@@ -131,7 +131,7 @@ export function registerAdminTools(
 
   server.tool(
     "foundry_get_world_size",
-    "Get disk usage information for the current world, including sizes of each document collection and compendium packs.",
+    "Get disk usage information for the current world. Returns byte sizes per collection (actors, items, scenes, journals, etc.) and all compendium packs. Useful for monitoring world bloat.",
     {},
     async () => {
       const response = await client.emitSocketCallback("sizeInfo");

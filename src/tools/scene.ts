@@ -10,7 +10,7 @@ export function registerSceneTools(
 ): void {
   server.tool(
     "foundry_activate_scene",
-    "Activate a scene, making it the current view for all players. Automatically deactivates the previously active scene.",
+    "Activate a scene, making it the current view for all players. Only one scene can be active at a time — activating one automatically deactivates the previous. Use foundry_list_documents with documentType='Scene' to find available scenes.",
     {
       sceneId: z.string().describe("Scene _id to activate"),
       showNavigation: z
@@ -113,7 +113,7 @@ export function registerSceneTools(
 
   server.tool(
     "foundry_place_token",
-    "Place an actor's token on a scene at a specific position. Reads the actor's prototype token data (artwork, size, vision) and creates a Token on the scene.",
+    "Place an actor's token on a scene at a specific position. Automatically copies the actor's prototype token data (artwork, size, vision, light emission) and creates a linked Token on the scene. Use overrides to customize placement (e.g., hidden, rotation, elevation). Coordinates are in pixels — multiply grid index by grid size (default 100).",
     {
       sceneId: z.string().describe("Scene _id to place token on"),
       actorId: z.string().describe("Actor _id to create token from"),

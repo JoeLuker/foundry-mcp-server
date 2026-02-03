@@ -16,6 +16,10 @@ import { registerGameTools } from "./tools/game.js";
 import { registerConvenienceTools } from "./tools/convenience.js";
 import { registerPresentationTools } from "./tools/presentation.js";
 import { registerAdminTools } from "./tools/admin.js";
+import { registerTokenTools } from "./tools/tokens.js";
+import { registerLightingTools } from "./tools/lighting.js";
+import { registerEffectTools } from "./tools/effects.js";
+import { registerTableTools } from "./tools/tables.js";
 import { registerResources } from "./resources.js";
 import type { FoundryConfig } from "./types.js";
 
@@ -37,7 +41,7 @@ const foundryClient = new FoundryClient(config);
 
 const server = new McpServer({
   name: "foundry-vtt",
-  version: "0.6.0",
+  version: "0.7.0",
 });
 
 // Register all tools
@@ -54,6 +58,10 @@ registerGameTools(server, foundryClient);
 registerConvenienceTools(server, foundryClient);
 registerPresentationTools(server, foundryClient);
 registerAdminTools(server, foundryClient);
+registerTokenTools(server, foundryClient);
+registerLightingTools(server, foundryClient);
+registerEffectTools(server, foundryClient);
+registerTableTools(server, foundryClient);
 
 // Register MCP resources
 registerResources(server, foundryClient);

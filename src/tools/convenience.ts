@@ -159,7 +159,7 @@ export function registerConvenienceTools(
 
   server.tool(
     "foundry_modify_actor_hp",
-    "Apply damage or healing to an actor's HP. Positive values heal, negative values deal damage. Clamps to 0-max range. Works with PF1e and D&D 5e (system.attributes.hp).",
+    "Apply damage or healing to an actor's HP. Positive values heal, negative values deal damage. Clamps to 0-max range. Works with systems storing HP at system.attributes.hp (PF1e, D&D 5e, PF2e). For other systems, use foundry_update_document with the correct HP path.",
     {
       actorId: z.string().describe("Actor _id"),
       amount: z
