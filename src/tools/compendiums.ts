@@ -20,40 +20,26 @@ export function registerCompendiumTools(
         ),
     },
     async ({ type }) => {
-      const script = `
-const packs = game.packs.map(p => ({
-  id: p.collection,
-  label: p.metadata.label,
-  type: p.metadata.type,
-  packageName: p.metadata.packageName,
-  packageType: p.metadata.packageType,
-  count: p.index?.size ?? null,
-}));
-await ChatMessage.create({
-  content: "MCP_PACK_LIST:" + JSON.stringify(packs),
-  whisper: [game.userId],
-  type: CONST.CHAT_MESSAGE_STYLES.OTHER,
-});
-`;
+      // Use the "world" socket event to get world data which includes pack metadata.
+      // This event takes only a callback (no data argument).
+      const worldData = (await client.emitSocketCallback("world")) as Record<
+        string,
+        unknown
+      >;
 
-      const result = await client.executeMacroWithResult(script, "MCP_PACK_LIST:");
+      const rawPacks = (worldData.packs || []) as Array<
+        Record<string, unknown>
+      >;
 
-      if (!result.success) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                error: result.error,
-                hint: 'Pack IDs follow the format "{packageName}.{packName}" (e.g., "pf1.spells", "pf1.items")',
-              }, null, 2),
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      let packs = result.data as Array<Record<string, unknown>>;
+      let packs = rawPacks.map((p) => ({
+        id: p.id || `${p.packageName}.${p.name}`,
+        label: p.label,
+        type: p.type,
+        packageName: p.packageName,
+        packageType: p.packageType,
+        count:
+          Array.isArray(p.index) ? p.index.length : (p.index as Record<string, unknown>)?.length ?? null,
+      }));
 
       if (type) {
         packs = packs.filter((p) => p.type === type);

@@ -8,39 +8,21 @@ export function registerGameTools(
 ): void {
   server.tool(
     "foundry_toggle_pause",
-    "Pause or unpause the Foundry VTT game for all connected players. Requires a connected browser client.",
+    "Pause or unpause the Foundry VTT game for all connected players.",
     {
       pause: z.boolean().describe("True to pause, false to unpause"),
     },
     async ({ pause }) => {
-      const script = `
-await game.togglePause(${pause}, { broadcast: true });
-await ChatMessage.create({
-  content: "MCP_PAUSE:" + JSON.stringify({ paused: game.paused }),
-  whisper: [game.userId],
-  type: CONST.CHAT_MESSAGE_STYLES.OTHER,
-});
-`;
-
-      const result = await client.executeMacroWithResult(script, "MCP_PAUSE:");
-
-      if (!result.success) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: result.error }, null, 2),
-            },
-          ],
-          isError: true,
-        };
-      }
+      // Use the server-side "pause" socket event directly.
+      // Signature: socket.emit("pause", paused: boolean, userData: object)
+      // The server sets game.paused and broadcasts to all clients.
+      await client.emitSocketRaw("pause", pause, {});
 
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result.data, null, 2),
+            text: JSON.stringify({ paused: pause }, null, 2),
           },
         ],
       };
@@ -106,46 +88,50 @@ await ChatMessage.create({
 
   server.tool(
     "foundry_list_online_users",
-    "List currently connected (online) users in the Foundry VTT game, including their roles and assigned characters. Requires a connected browser client.",
+    "List currently connected (online) users in the Foundry VTT game, including their roles and assigned characters.",
     {},
     async () => {
-      const script = `
-const users = game.users.filter(u => u.active).map(u => ({
-  id: u.id,
-  name: u.name,
-  role: u.role,
-  character: u.character ? { id: u.character.id, name: u.character.name } : null,
-  color: u.color,
-}));
-await ChatMessage.create({
-  content: "MCP_ONLINE_USERS:" + JSON.stringify({ total: users.length, users }),
-  whisper: [game.userId],
-  type: CONST.CHAT_MESSAGE_STYLES.OTHER,
-});
-`;
+      // Use getUserActivity socket event to get active user IDs,
+      // then fetch their User documents for names/roles.
+      const activeUsers = await client.getActiveUsers();
+      const activeUserIds = activeUsers.map((u) => u.userId);
 
-      const result = await client.executeMacroWithResult(
-        script,
-        "MCP_ONLINE_USERS:",
-      );
-
-      if (!result.success) {
+      if (activeUserIds.length === 0) {
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ error: result.error }, null, 2),
+              text: JSON.stringify({ total: 0, users: [] }, null, 2),
             },
           ],
-          isError: true,
         };
       }
+
+      // Fetch User documents for the active users
+      const response = await client.modifyDocument("User", "get", {
+        query: {},
+      });
+
+      const allUsers = (response.result || []) as Record<string, unknown>[];
+      const onlineUsers = allUsers
+        .filter((u) => activeUserIds.includes(u._id as string))
+        .map((u) => ({
+          id: u._id,
+          name: u.name,
+          role: u.role,
+          character: u.character || null,
+          color: u.color || null,
+        }));
 
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result.data, null, 2),
+            text: JSON.stringify(
+              { total: onlineUsers.length, users: onlineUsers },
+              null,
+              2,
+            ),
           },
         ],
       };

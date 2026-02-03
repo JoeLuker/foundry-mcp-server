@@ -5,7 +5,7 @@ MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via
 ## Features
 
 - **Direct connection** to Foundry VTT via Socket.IO with HTTP session authentication
-- **41 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file uploads, macro execution, compendium access, scene management, combat workflow, game state control, and convenience operations
+- **36 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file uploads, macro execution, compendium access, scene management, combat workflow, game state control, and convenience operations
 - **9 MCP resources** for browsing world data (actors, journals, scenes, items, macros, playlists, roll tables, combats, cards)
 - **System-agnostic** — works with any game system (PF1e, PF2e, D&D 5e, etc.)
 - **Automatic reconnection** with retry logic on timeout/disconnect
@@ -162,7 +162,7 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_create_journal` | Create a journal entry with pages in one call |
 | `foundry_modify_actor_hp` | Apply damage/healing to an actor's HP |
 
-> **Note:** Tools marked as requiring a "connected browser client" (combat, pause, online users, initiative) use a macro execution workaround that needs at least one browser tab open to the Foundry world.
+> **Note:** The `foundry_execute_macro` tool requires a connected browser client to execute JavaScript in Foundry's game context. All other tools communicate directly via Socket.IO and work without a browser.
 
 ## Development
 

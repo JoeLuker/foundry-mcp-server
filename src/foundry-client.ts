@@ -262,6 +262,54 @@ export class FoundryClient {
     }
   }
 
+  /**
+   * Emit a socket event with arbitrary arguments (no callback expected).
+   * Used for fire-and-forget events like "pause" where the server broadcasts
+   * but doesn't respond via callback.
+   */
+  async emitSocketRaw(
+    event: string,
+    ...args: unknown[]
+  ): Promise<void> {
+    await this.ensureConnected();
+    if (!this.socket?.connected) {
+      throw new Error("Not connected to Foundry VTT");
+    }
+    this.socket.emit(event, ...args);
+  }
+
+  /**
+   * Get active user activity data from Foundry's server.
+   * Emits "getUserActivity" and collects the "userActivity" events the server
+   * sends back for each active user.
+   */
+  async getActiveUsers(): Promise<
+    { userId: string; activity: Record<string, unknown> }[]
+  > {
+    await this.ensureConnected();
+    if (!this.socket?.connected) {
+      throw new Error("Not connected to Foundry VTT");
+    }
+
+    const users: { userId: string; activity: Record<string, unknown> }[] = [];
+
+    return new Promise((resolve) => {
+      const handler = (userId: string, activity: Record<string, unknown>) => {
+        users.push({ userId, activity });
+      };
+
+      this.socket!.on("userActivity", handler);
+      this.socket!.emit("getUserActivity");
+
+      // The server responds synchronously by emitting userActivity events
+      // for each active user. Give a short window to collect them all.
+      setTimeout(() => {
+        this.socket?.off("userActivity", handler);
+        resolve(users);
+      }, 500);
+    });
+  }
+
   private _emitSocket(
     event: string,
     data: Record<string, unknown>,
@@ -277,6 +325,36 @@ export class FoundryClient {
       }, 30000);
 
       this.socket.emit(event, data, (response: unknown) => {
+        clearTimeout(timeout);
+        resolve(response);
+      });
+    });
+  }
+
+  /**
+   * Emit a socket event with only a callback (no data argument).
+   * Used for events like "world" and "sizeInfo" where the server handler
+   * receives just the callback function as the first argument.
+   */
+  async emitSocketCallback(
+    event: string,
+    timeoutMs = 60000,
+  ): Promise<unknown> {
+    await this.ensureConnected();
+    if (!this.socket?.connected) {
+      throw new Error("Not connected to Foundry VTT");
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(
+          new Error(
+            `Foundry socket request "${event}" timed out after ${timeoutMs}ms`,
+          ),
+        );
+      }, timeoutMs);
+
+      this.socket!.emit(event, (response: unknown) => {
         clearTimeout(timeout);
         resolve(response);
       });
