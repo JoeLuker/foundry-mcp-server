@@ -1,11 +1,11 @@
 # foundry-mcp-server
 
-MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via Socket.IO — no Foundry module installation required.
+MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via Socket.IO with 65 tools for full world management. Includes an optional companion module for bidirectional RPC with the browser game context.
 
 ## Features
 
 - **Direct connection** to Foundry VTT via Socket.IO with HTTP session authentication
-- **63 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file management, macro execution, compendium access, scene management, combat workflow, game state control, presentation, admin, token manipulation, lighting/walls, active effects, roll tables, and card decks
+- **65 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file management, macro execution, compendium access, scene management, combat workflow, game state control, presentation, admin, token manipulation, lighting/walls, active effects, roll tables, card decks, and browser RPC
 - **9 MCP resources** for browsing world data (actors, journals, scenes, items, macros, playlists, roll tables, combats, cards)
 - **System-agnostic** — works with any game system (PF1e, PF2e, D&D 5e, etc.)
 - **Automatic reconnection** with retry logic on timeout/disconnect
@@ -219,14 +219,56 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_create_journal` | Create a journal entry with pages in one call |
 | `foundry_modify_actor_hp` | Apply damage/healing to an actor's HP |
 
-> **Note:** The `foundry_execute_macro` tool requires a connected browser client to execute JavaScript in Foundry's game context. All other tools communicate directly via Socket.IO and work without a browser.
+### Browser RPC (via foundry-mcp-bridge)
+
+| Tool | Description |
+|------|-------------|
+| `foundry_rpc` | Execute a method in the browser game context (eval, canvas, module APIs) |
+| `foundry_rpc_ping` | Check if the bridge module is active and a GM browser is listening |
+
+Built-in RPC methods: `eval` (arbitrary JS with top-level await), `getCanvasDimensions`, `getTokensOnCanvas`, `rollFormula` (native Foundry Roll), `fromUuid`, `getModuleApis`, `callModuleApi`.
+
+> **Note:** `foundry_rpc` and `foundry_execute_macro` require a connected GM browser client. All other tools communicate directly via Socket.IO and work without a browser.
+
+## Companion Module: foundry-mcp-bridge
+
+The `foundry-mcp-bridge/` directory contains an optional Foundry VTT module that provides a bidirectional RPC channel. This enables full access to the browser's `game`, `canvas`, `ui`, and installed module APIs — things that aren't accessible through Socket.IO alone.
+
+### Installing the Bridge Module
+
+Symlink or copy the module into your Foundry data directory:
+
+```bash
+ln -s /path/to/foundry-mcp-server/foundry-mcp-bridge /path/to/foundry-data/Data/modules/foundry-mcp-bridge
+```
+
+Then enable **Foundry MCP Bridge** in your world's module settings. The bridge activates automatically for GM users and logs `foundry-mcp-bridge | RPC bridge active for GM: <name>` to the browser console.
+
+### How It Works
+
+1. The MCP server sends an RPC request via the `module.foundry-mcp-bridge` socket channel
+2. Foundry's server relays it to all connected browser clients
+3. The bridge module (running in a GM's browser) executes the method in the full `game` context
+4. The result is sent back over the same socket channel
+5. The MCP server matches the response by request ID and returns it
+
+If multiple GM browsers are open, all will respond — the MCP server accepts the first response and ignores duplicates.
+
+### Without the Bridge
+
+All 63 other tools work without the bridge module. The bridge is only needed for:
+- Reading live canvas state (token positions, dimensions, grid info)
+- Using Foundry's native Roll class (system-specific dice formulas)
+- Resolving UUIDs with `fromUuid()` (compendium refs, embedded docs)
+- Calling module public APIs
+- Running arbitrary JavaScript in the game context
 
 ## Development
 
 ```bash
 npm run dev    # Run with tsx (auto-compiles TypeScript)
 npm run build  # Compile to dist/
-npm test       # Run unit tests (171 tests)
+npm test       # Run unit tests (185 tests)
 npm start      # Run compiled version
 ```
 
