@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { documentTypeSchema } from "../types.js";
-import { pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
+import { jsonResponse, errorResponse, getResults, pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
 
 export function registerCompendiumTools(
   server: McpServer,
@@ -20,8 +20,6 @@ export function registerCompendiumTools(
         ),
     },
     async ({ type }) => {
-      // Use the "world" socket event to get world data which includes pack metadata.
-      // This event takes only a callback (no data argument).
       const worldData = (await client.emitSocketCallback("world")) as Record<
         string,
         unknown
@@ -37,22 +35,16 @@ export function registerCompendiumTools(
         type: p.type,
         packageName: p.packageName,
         packageType: p.packageType,
-        count:
-          Array.isArray(p.index) ? p.index.length : (p.index as Record<string, unknown>)?.length ?? null,
+        count: Array.isArray(p.index)
+          ? p.index.length
+          : (p.index && typeof p.index === "object" ? Object.keys(p.index).length : null),
       }));
 
       if (type) {
         packs = packs.filter((p) => p.type === type);
       }
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ total: packs.length, packs }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ total: packs.length, packs });
     },
   );
 
@@ -92,7 +84,7 @@ export function registerCompendiumTools(
         pack: packId,
       });
 
-      let docs = (response.result || []) as Record<string, unknown>[];
+      let docs = getResults(response);
 
       const total = docs.length;
       docs = docs.slice(offset, offset + limit);
@@ -101,18 +93,7 @@ export function registerCompendiumTools(
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
       const results = docs.map((d) => pickFields(d, selectedFields));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              { total, count: results.length, offset, packId, documents: results },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({ total, count: results.length, offset, packId, documents: results });
     },
   );
 
@@ -134,31 +115,16 @@ export function registerCompendiumTools(
         pack: packId,
       });
 
-      const docs = (response.result || []) as Record<string, unknown>[];
+      const docs = getResults(response);
       const doc = docs[0];
 
       if (!doc) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Entry "${id}" not found in pack "${packId}"`,
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(`Entry "${id}" not found in pack "${packId}"`);
       }
 
       const result = fields && fields.length > 0 ? pickFields(doc, fields) : doc;
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -190,7 +156,6 @@ export function registerCompendiumTools(
         .default(20),
     },
     async ({ packId, documentType, namePattern, filters, fields, limit }) => {
-      // Split filters: top-level to server, dot-notation stays client-side
       const { serverQuery, clientFilters } = filters
         ? splitFilters(filters)
         : { serverQuery: {}, clientFilters: {} };
@@ -200,14 +165,12 @@ export function registerCompendiumTools(
         pack: packId,
       });
 
-      let docs = (response.result || []) as Record<string, unknown>[];
+      let docs = getResults(response);
 
-      // Client-side name filter
       if (namePattern) {
         docs = filterByName(docs, namePattern);
       }
 
-      // Client-side dot-notation filters
       docs = applyClientFilters(docs, clientFilters);
 
       const total = docs.length;
@@ -217,18 +180,7 @@ export function registerCompendiumTools(
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
       const results = docs.map((d) => pickFields(d, selectedFields));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              { total, count: results.length, packId, documents: results },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({ total, count: results.length, packId, documents: results });
     },
   );
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import { jsonResponse, getResults } from "../utils.js";
 
 export function registerGameTools(
   server: McpServer,
@@ -18,14 +19,7 @@ export function registerGameTools(
       // The server sets game.paused and broadcasts to all clients.
       await client.emitSocketRaw("pause", pause, {});
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ paused: pause }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ paused: pause });
     },
   );
 
@@ -52,18 +46,7 @@ export function registerGameTools(
           parentUuid: `Playlist.${playlistId}`,
         });
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                { playlistId, soundId, action, playing },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return jsonResponse({ playlistId, soundId, action, playing });
       }
 
       // Control entire playlist
@@ -71,18 +54,7 @@ export function registerGameTools(
         updates: [{ _id: playlistId, playing }],
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              { playlistId, action, playing },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({ playlistId, action, playing });
     },
   );
 
@@ -97,14 +69,7 @@ export function registerGameTools(
       const activeUserIds = activeUsers.map((u) => u.userId);
 
       if (activeUserIds.length === 0) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ total: 0, users: [] }, null, 2),
-            },
-          ],
-        };
+        return jsonResponse({ total: 0, users: [] });
       }
 
       // Fetch User documents for the active users
@@ -112,7 +77,7 @@ export function registerGameTools(
         query: {},
       });
 
-      const allUsers = (response.result || []) as Record<string, unknown>[];
+      const allUsers = getResults(response);
       const onlineUsers = allUsers
         .filter((u) => activeUserIds.includes(u._id as string))
         .map((u) => ({
@@ -123,18 +88,7 @@ export function registerGameTools(
           color: u.color || null,
         }));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              { total: onlineUsers.length, users: onlineUsers },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({ total: onlineUsers.length, users: onlineUsers });
     },
   );
 }

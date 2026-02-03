@@ -14,6 +14,8 @@ import { registerSceneTools } from "./tools/scene.js";
 import { registerCombatTools } from "./tools/combat.js";
 import { registerGameTools } from "./tools/game.js";
 import { registerConvenienceTools } from "./tools/convenience.js";
+import { registerPresentationTools } from "./tools/presentation.js";
+import { registerAdminTools } from "./tools/admin.js";
 import { registerResources } from "./resources.js";
 import type { FoundryConfig } from "./types.js";
 
@@ -35,7 +37,7 @@ const foundryClient = new FoundryClient(config);
 
 const server = new McpServer({
   name: "foundry-vtt",
-  version: "0.5.0",
+  version: "0.6.0",
 });
 
 // Register all tools
@@ -50,6 +52,8 @@ registerSceneTools(server, foundryClient);
 registerCombatTools(server, foundryClient);
 registerGameTools(server, foundryClient);
 registerConvenienceTools(server, foundryClient);
+registerPresentationTools(server, foundryClient);
+registerAdminTools(server, foundryClient);
 
 // Register MCP resources
 registerResources(server, foundryClient);

@@ -1,6 +1,6 @@
 {
   "name": "foundry-mcp-server",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "MCP server for Foundry VTT v13 - direct socket.io connection, no module required",
   "bin": {
@@ -11,6 +11,8 @@
     "clean": "rm -rf dist",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
@@ -21,7 +23,8 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18.0.0"

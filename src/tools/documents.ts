@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { documentTypeSchema } from "../types.js";
-import { pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
+import { jsonResponse, errorResponse, getResults, getFirstResult, pickFields, filterByName, splitFilters, applyClientFilters } from "../utils.js";
 
 export function registerDocumentTools(
   server: McpServer,
@@ -52,7 +52,7 @@ export function registerDocumentTools(
         query,
       });
 
-      let docs = (response.result || []) as Record<string, unknown>[];
+      let docs = getResults(response);
 
       // Paginate
       const total = docs.length;
@@ -63,14 +63,7 @@ export function registerDocumentTools(
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
       const results = docs.map((d) => pickFields(d, selectedFields));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ total, count: results.length, offset, documents: results }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ total, count: results.length, offset, documents: results });
     },
   );
 
@@ -90,32 +83,17 @@ export function registerDocumentTools(
         query: { _id: id },
       });
 
-      const docs = (response.result || []) as Record<string, unknown>[];
+      const docs = getResults(response);
       const doc = docs.find((d) => d._id === id);
 
       if (!doc) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `${documentType} with id "${id}" not found`,
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(`${documentType} with id "${id}" not found`);
       }
 
       const result =
         fields && fields.length > 0 ? pickFields(doc, fields) : doc;
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -147,7 +125,7 @@ export function registerDocumentTools(
         query: serverQuery,
       });
 
-      let docs = (response.result || []) as Record<string, unknown>[];
+      let docs = getResults(response);
 
       // Filter by name (client-side only -- Foundry query doesn't support regex)
       if (namePattern) {
@@ -166,14 +144,7 @@ export function registerDocumentTools(
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
       const results = docs.map((d) => pickFields(d, selectedFields));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ total, count: results.length, documents: results }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ total, count: results.length, documents: results });
     },
   );
 
@@ -194,16 +165,9 @@ export function registerDocumentTools(
         data,
       });
 
-      const results = (response.result || []) as Record<string, unknown>[];
+      const results = getResults(response);
       const ids = results.map((r) => r._id);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ created: ids.length, ids }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ created: ids.length, ids });
     },
   );
 
@@ -225,16 +189,9 @@ export function registerDocumentTools(
         updates,
       });
 
-      const results = (response.result || []) as Record<string, unknown>[];
+      const results = getResults(response);
       const ids = results.map((r) => r._id);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ updated: ids.length, ids }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ updated: ids.length, ids });
     },
   );
 
@@ -251,14 +208,7 @@ export function registerDocumentTools(
       });
 
       const results = (response.result || []) as string[];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ deleted: results.length, ids: results }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ deleted: results.length, ids: results });
     },
   );
 
@@ -280,15 +230,8 @@ export function registerDocumentTools(
         data: [data],
       });
 
-      const created = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(created, null, 2),
-          },
-        ],
-      };
+      const created = getFirstResult(response);
+      return jsonResponse(created);
     },
   );
 
@@ -309,15 +252,8 @@ export function registerDocumentTools(
         updates: [{ _id: id, ...updates }],
       });
 
-      const updated = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(updated, null, 2),
-          },
-        ],
-      };
+      const updated = getFirstResult(response);
+      return jsonResponse(updated);
     },
   );
 
@@ -334,18 +270,7 @@ export function registerDocumentTools(
       });
 
       const deleted = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              { deleted: true, id: deleted },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({ deleted: true, id: deleted });
     },
   );
 }

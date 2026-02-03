@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import { jsonResponse, getFirstResult } from "../utils.js";
 
 export function registerChatTools(
   server: McpServer,
@@ -41,23 +42,12 @@ export function registerChatTools(
         data: [data],
       });
 
-      const created = (response.result || [])[0] as Record<string, unknown>;
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                sent: true,
-                id: created?._id,
-                content: created?.content,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      const created = getFirstResult(response);
+      return jsonResponse({
+        sent: true,
+        id: created?._id,
+        content: created?.content,
+      });
     },
   );
 
@@ -78,8 +68,6 @@ export function registerChatTools(
         .describe("Speaker information"),
     },
     async ({ formula, flavor, speaker }) => {
-      // Create a chat message with an inline roll
-      // Foundry evaluates [[formula]] inline rolls server-side
       let content = `[[/roll ${formula}]]`;
       if (flavor) {
         content = `${flavor}\n${content}`;
@@ -87,7 +75,7 @@ export function registerChatTools(
 
       const data: Record<string, unknown> = {
         content,
-        type: 5, // Roll type
+        type: 5,
       };
       if (speaker) data.speaker = speaker;
 
@@ -95,25 +83,14 @@ export function registerChatTools(
         data: [data],
       });
 
-      const created = (response.result || [])[0] as Record<string, unknown>;
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                rolled: true,
-                formula,
-                id: created?._id,
-                content: created?.content,
-                rolls: created?.rolls,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      const created = getFirstResult(response);
+      return jsonResponse({
+        rolled: true,
+        formula,
+        id: created?._id,
+        content: created?.content,
+        rolls: created?.rolls,
+      });
     },
   );
 }

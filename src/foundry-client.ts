@@ -263,6 +263,62 @@ export class FoundryClient {
   }
 
   /**
+   * Emit a socket event with multiple arguments followed by a callback.
+   * Used for events like "manageFiles" where the server handler signature is
+   * (data, options, callback) — i.e., more than one arg before the callback.
+   * Retries once on timeout/disconnect errors.
+   */
+  async emitSocketArgs(
+    event: string,
+    ...args: unknown[]
+  ): Promise<unknown> {
+    await this.ensureConnected();
+
+    try {
+      return await this._emitSocketArgs(event, args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.includes("timed out") ||
+        message.includes("disconnected") ||
+        message.includes("Not connected") ||
+        !this.socket?.connected
+      ) {
+        this._state = "disconnected";
+        this.sessionId = null;
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
+        await this.ensureConnected();
+        return await this._emitSocketArgs(event, args);
+      }
+      throw err;
+    }
+  }
+
+  private _emitSocketArgs(
+    event: string,
+    args: unknown[],
+  ): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error("Not connected to Foundry VTT"));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error(`Foundry socket request "${event}" timed out after 30s`));
+      }, 30000);
+
+      this.socket.emit(event, ...args, (response: unknown) => {
+        clearTimeout(timeout);
+        resolve(response);
+      });
+    });
+  }
+
+  /**
    * Emit a socket event with arbitrary arguments (no callback expected).
    * Used for fire-and-forget events like "pause" where the server broadcasts
    * but doesn't respond via callback.

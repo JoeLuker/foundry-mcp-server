@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import { jsonResponse, errorResponse, getResults, rollDice } from "../utils.js";
 
 export function registerCombatTools(
   server: McpServer,
@@ -30,16 +31,11 @@ export function registerCombatTools(
       const combatResponse = await client.modifyDocument("Combat", "get", {
         query: { _id: combatId },
       });
-      const combats = (combatResponse.result || []) as Record<string, unknown>[];
+      const combats = getResults(combatResponse);
       const combat = combats.find((c) => c._id === combatId);
 
       if (!combat) {
-        return {
-          content: [
-            { type: "text" as const, text: `Combat "${combatId}" not found` },
-          ],
-          isError: true,
-        };
+        return errorResponse(`Combat "${combatId}" not found`);
       }
 
       // Get combatants
@@ -47,9 +43,9 @@ export function registerCombatTools(
         query: {},
         parentUuid: `Combat.${combatId}`,
       });
-      const allCombatants = (combatantsResponse.result || []) as Record<string, unknown>[];
+      const allCombatants = getResults(combatantsResponse);
 
-      // Filter targets
+      // Filter targets: specific IDs or all without initiative (null/undefined, NOT 0)
       let targets = allCombatants;
       if (combatantIds) {
         targets = allCombatants.filter((c) => combatantIds.includes(c._id as string));
@@ -60,62 +56,54 @@ export function registerCombatTools(
       }
 
       if (targets.length === 0) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                combatId,
-                message: "No combatants need initiative rolled",
-              }, null, 2),
-            },
-          ],
-        };
+        return jsonResponse({
+          combatId,
+          message: "No combatants need initiative rolled",
+        });
+      }
+
+      // Batch-fetch all unique actor IDs at once instead of one-by-one
+      const actorIds = [
+        ...new Set(
+          targets
+            .map((c) => c.actorId as string | undefined)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+
+      const actorModifiers: Map<string, number> = new Map();
+      if (actorIds.length > 0) {
+        const actorResponse = await client.modifyDocument("Actor", "get", {
+          query: {},
+        });
+        const allActors = getResults(actorResponse);
+
+        for (const actor of allActors) {
+          if (!actorIds.includes(actor._id as string)) continue;
+          const system = actor.system as Record<string, unknown> | undefined;
+          const attributes = system?.attributes as Record<string, unknown> | undefined;
+          const init = attributes?.init as Record<string, unknown> | undefined;
+          // PF1e: system.attributes.init.total, D&D 5e: system.attributes.init.bonus
+          const mod =
+            (init?.total as number) ??
+            (init?.bonus as number) ??
+            (init?.value as number) ??
+            0;
+          if (typeof mod === "number") {
+            actorModifiers.set(actor._id as string, mod);
+          }
+        }
       }
 
       // Roll initiative for each target
       const updates: Record<string, unknown>[] = [];
-      const results: { id: string; name: string; initiative: number }[] = [];
+      const results: { id: string; name: string; initiative: number; roll: number; modifier: number }[] = [];
 
       for (const combatant of targets) {
-        // Get actor's initiative modifier
-        let actorModifier = 0;
         const actorId = combatant.actorId as string | undefined;
-        if (actorId) {
-          try {
-            const actorResponse = await client.modifyDocument("Actor", "get", {
-              query: { _id: actorId },
-            });
-            const actors = (actorResponse.result || []) as Record<string, unknown>[];
-            const actor = actors[0];
-            if (actor) {
-              const system = actor.system as Record<string, unknown> | undefined;
-              const attributes = system?.attributes as Record<string, unknown> | undefined;
-              const init = attributes?.init as Record<string, unknown> | undefined;
-              // PF1e: system.attributes.init.total, D&D 5e: system.attributes.init.bonus
-              actorModifier =
-                (init?.total as number) ??
-                (init?.bonus as number) ??
-                (init?.value as number) ??
-                0;
-            }
-          } catch {
-            // Use 0 modifier
-          }
-        }
+        const actorModifier = actorId ? (actorModifiers.get(actorId) ?? 0) : 0;
 
-        // Roll dice locally (Foundry's server doesn't expose a dice-roll socket event)
-        const diceMatch = formula.match(/(\d+)?d(\d+)/);
-        let rollTotal = 0;
-        if (diceMatch) {
-          const count = parseInt(diceMatch[1] || "1", 10);
-          const sides = parseInt(diceMatch[2], 10);
-          for (let i = 0; i < count; i++) {
-            rollTotal += Math.floor(Math.random() * sides) + 1;
-          }
-        } else {
-          rollTotal = parseInt(formula, 10) || 0;
-        }
+        const rollTotal = rollDice(formula);
         const initiativeValue = rollTotal + actorModifier;
 
         updates.push({ _id: combatant._id, initiative: initiativeValue });
@@ -123,6 +111,8 @@ export function registerCombatTools(
           id: combatant._id as string,
           name: (combatant.name as string) || "Unknown",
           initiative: initiativeValue,
+          roll: rollTotal,
+          modifier: actorModifier,
         });
       }
 
@@ -132,18 +122,11 @@ export function registerCombatTools(
         parentUuid: `Combat.${combatId}`,
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              combatId,
-              rolled: results.length,
-              combatants: results.sort((a, b) => b.initiative - a.initiative),
-            }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({
+        combatId,
+        rolled: results.length,
+        combatants: results.sort((a, b) => b.initiative - a.initiative),
+      });
     },
   );
 
@@ -161,16 +144,11 @@ export function registerCombatTools(
       const combatResponse = await client.modifyDocument("Combat", "get", {
         query: { _id: combatId },
       });
-      const combats = (combatResponse.result || []) as Record<string, unknown>[];
+      const combats = getResults(combatResponse);
       const combat = combats.find((c) => c._id === combatId);
 
       if (!combat) {
-        return {
-          content: [
-            { type: "text" as const, text: `Combat "${combatId}" not found` },
-          ],
-          isError: true,
-        };
+        return errorResponse(`Combat "${combatId}" not found`);
       }
 
       // Get combatant count
@@ -178,19 +156,11 @@ export function registerCombatTools(
         query: {},
         parentUuid: `Combat.${combatId}`,
       });
-      const combatants = (combatantsResponse.result || []) as Record<string, unknown>[];
+      const combatants = getResults(combatantsResponse);
       const numCombatants = combatants.length;
 
       if (numCombatants === 0) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: "Combat has no combatants" }, null, 2),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse("Combat has no combatants");
       }
 
       let round = (combat.round as number) || 0;
@@ -231,22 +201,15 @@ export function registerCombatTools(
         .sort((a, b) => (b.initiative as number) - (a.initiative as number));
       const currentCombatant = sorted[turn];
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              combatId,
-              action,
-              round,
-              turn,
-              currentCombatant: currentCombatant
-                ? { id: currentCombatant._id, name: currentCombatant.name }
-                : null,
-            }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({
+        combatId,
+        action,
+        round,
+        turn,
+        currentCombatant: currentCombatant
+          ? { id: currentCombatant._id, name: currentCombatant.name }
+          : null,
+      });
     },
   );
 
@@ -262,19 +225,7 @@ export function registerCombatTools(
     async ({ combatId, action }) => {
       if (action === "end") {
         await client.modifyDocument("Combat", "delete", { ids: [combatId] });
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                { combatId, action: "end", deleted: true },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return jsonResponse({ combatId, action: "end", deleted: true });
       }
 
       // Start combat: set round=1, turn=0, started=true, active=true
@@ -287,29 +238,22 @@ export function registerCombatTools(
         query: {},
         parentUuid: `Combat.${combatId}`,
       });
-      const combatants = (combatantsResponse.result || []) as Record<string, unknown>[];
+      const combatants = getResults(combatantsResponse);
       const sorted = combatants
         .filter((c) => c.initiative !== null && c.initiative !== undefined)
         .sort((a, b) => (b.initiative as number) - (a.initiative as number));
       const currentCombatant = sorted[0];
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              combatId,
-              action: "start",
-              started: true,
-              round: 1,
-              turn: 0,
-              currentCombatant: currentCombatant
-                ? { id: currentCombatant._id, name: currentCombatant.name }
-                : null,
-            }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({
+        combatId,
+        action: "start",
+        started: true,
+        round: 1,
+        turn: 0,
+        currentCombatant: currentCombatant
+          ? { id: currentCombatant._id, name: currentCombatant.name }
+          : null,
+      });
     },
   );
 }

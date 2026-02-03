@@ -2,6 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { documentTypeSchema } from "../types.js";
+import { jsonResponse, errorResponse, getResults, getFirstResult } from "../utils.js";
 
 export function registerConvenienceTools(
   server: McpServer,
@@ -53,22 +54,9 @@ export function registerConvenienceTools(
         { data: [journalData] },
       );
 
-      const journal = (journalResponse.result || [])[0] as Record<
-        string,
-        unknown
-      >;
+      const journal = getFirstResult(journalResponse);
       if (!journal?._id) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                error: "Failed to create journal entry",
-              }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse("Failed to create journal entry");
       }
 
       const journalId = journal._id as string;
@@ -94,29 +82,15 @@ export function registerConvenienceTools(
         },
       );
 
-      const createdPages = (pagesResponse.result || []) as Record<
-        string,
-        unknown
-      >[];
+      const createdPages = getResults(pagesResponse);
       const pageIds = createdPages.map((p) => p._id);
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                journalId,
-                journalName: name,
-                pagesCreated: pageIds.length,
-                pageIds,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({
+        journalId,
+        journalName: name,
+        pagesCreated: pageIds.length,
+        pageIds,
+      });
     },
   );
 
@@ -151,19 +125,11 @@ export function registerConvenienceTools(
         pack: packId,
       });
 
-      const docs = (packResponse.result || []) as Record<string, unknown>[];
+      const docs = getResults(packResponse);
       const doc = docs[0];
 
       if (!doc) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Entry "${entryId}" not found in pack "${packId}"`,
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(`Entry "${entryId}" not found in pack "${packId}"`);
       }
 
       // Step 2: Prepare for world import
@@ -179,35 +145,21 @@ export function registerConvenienceTools(
         { data: [importData] },
       );
 
-      const created = (createResponse.result || [])[0] as Record<
-        string,
-        unknown
-      >;
+      const created = getFirstResult(createResponse);
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                imported: true,
-                worldId: created?._id,
-                packId,
-                originalId: entryId,
-                name: created?.name ?? doc.name,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({
+        imported: true,
+        worldId: created?._id,
+        packId,
+        originalId: entryId,
+        name: created?.name ?? doc.name,
+      });
     },
   );
 
   server.tool(
     "foundry_modify_actor_hp",
-    "Apply damage or healing to an actor's HP. Positive values heal, negative values deal damage. Clamps to 0–max range. Works with PF1e and D&D 5e (system.attributes.hp).",
+    "Apply damage or healing to an actor's HP. Positive values heal, negative values deal damage. Clamps to 0-max range. Works with PF1e and D&D 5e (system.attributes.hp).",
     {
       actorId: z.string().describe("Actor _id"),
       amount: z
@@ -227,19 +179,11 @@ export function registerConvenienceTools(
         query: { _id: actorId },
       });
 
-      const actors = (getResponse.result || []) as Record<string, unknown>[];
+      const actors = getResults(getResponse);
       const actor = actors.find((a) => a._id === actorId);
 
       if (!actor) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Actor with id "${actorId}" not found`,
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(`Actor with id "${actorId}" not found`);
       }
 
       // Navigate to HP data (works for PF1e and D&D 5e)
@@ -250,19 +194,9 @@ export function registerConvenienceTools(
       const hp = attributes?.hp as Record<string, unknown> | undefined;
 
       if (!hp) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                error:
-                  "Could not find HP data at system.attributes.hp. This actor's game system may use a different HP path.",
-                actorName: actor.name,
-              }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(
+          `Could not find HP data at system.attributes.hp for actor "${actor.name}". This actor's game system may use a different HP path.`,
+        );
       }
 
       const field = temp ? "temp" : "value";
@@ -284,26 +218,15 @@ export function registerConvenienceTools(
         ],
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                actorId,
-                actorName: actor.name,
-                field: `system.attributes.hp.${field}`,
-                previousHp: currentValue,
-                newHp: newValue,
-                maxHp,
-                change: amount,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({
+        actorId,
+        actorName: actor.name,
+        field: `system.attributes.hp.${field}`,
+        previousHp: currentValue,
+        newHp: newValue,
+        maxHp,
+        change: amount,
+      });
     },
   );
 }

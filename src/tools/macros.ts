@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import { jsonResponse, errorResponse, getFirstResult } from "../utils.js";
 
 export function registerMacroTools(
   server: McpServer,
@@ -20,15 +21,7 @@ export function registerMacroTools(
     async ({ script, name }) => {
       const userId = client.userId;
       if (!userId) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: "Not authenticated - no userId available" }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse("Not authenticated - no userId available");
       }
 
       // Step 1: Create a temporary script macro
@@ -43,17 +36,9 @@ export function registerMacroTools(
         ],
       });
 
-      const macro = (createResponse.result || [])[0] as Record<string, unknown>;
+      const macro = getFirstResult(createResponse);
       if (!macro?._id) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ error: "Failed to create temporary macro" }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse("Failed to create temporary macro");
       }
 
       const macroId = macro._id as string;
@@ -70,44 +55,22 @@ export function registerMacroTools(
           ],
         });
 
-        const chatResult = (chatResponse.result || [])[0] as Record<string, unknown>;
+        const chatResult = getFirstResult(chatResponse);
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  executed: true,
-                  macroId,
-                  chatMessageId: chatResult?._id,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return jsonResponse({
+          executed: true,
+          macroId,
+          chatMessageId: chatResult?._id,
+        });
       } catch (err) {
         // If chat execution fails, return the macro ID so it can be run manually
         const message = err instanceof Error ? err.message : String(err);
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  executed: false,
-                  macroId,
-                  error: message,
-                  hint: "Macro was created but execution via ChatMessage failed. Run it manually from the Foundry macro bar.",
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return jsonResponse({
+          executed: false,
+          macroId,
+          error: message,
+          hint: "Macro was created but execution via ChatMessage failed. Run it manually from the Foundry macro bar.",
+        });
       } finally {
         // Step 3: Clean up - delete the temporary macro
         try {

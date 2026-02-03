@@ -5,7 +5,7 @@ MCP server for [Foundry VTT](https://foundryvtt.com/) v13. Connects directly via
 ## Features
 
 - **Direct connection** to Foundry VTT via Socket.IO with HTTP session authentication
-- **36 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file uploads, macro execution, compendium access, scene management, combat workflow, game state control, and convenience operations
+- **45 MCP tools** for document CRUD, embedded documents, chat, dice rolling, file management, macro execution, compendium access, scene management, combat workflow, game state control, presentation, admin, and convenience operations
 - **9 MCP resources** for browsing world data (actors, journals, scenes, items, macros, playlists, roll tables, combats, cards)
 - **System-agnostic** — works with any game system (PF1e, PF2e, D&D 5e, etc.)
 - **Automatic reconnection** with retry logic on timeout/disconnect
@@ -138,6 +138,9 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 |------|-------------|
 | `foundry_activate_scene` | Activate a scene for all players |
 | `foundry_place_token` | Place an actor's token on a scene at x,y |
+| `foundry_preload_scene` | Pre-cache scene assets on all connected clients |
+| `foundry_pull_to_scene` | Force a player's view to a specific scene |
+| `foundry_reset_fog` | Clear fog of war exploration data for a scene |
 
 ### Combat
 
@@ -154,6 +157,22 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_toggle_pause` | Pause or unpause the game |
 | `foundry_control_playlist` | Play/stop playlists or individual sounds |
 | `foundry_list_online_users` | List currently connected users |
+
+### Presentation
+
+| Tool | Description |
+|------|-------------|
+| `foundry_show_journal` | Display a journal entry popup to players |
+| `foundry_share_image` | Share an image popup with players |
+
+### Admin & Files
+
+| Tool | Description |
+|------|-------------|
+| `foundry_browse_files` | Browse files and directories in Foundry's data storage |
+| `foundry_create_directory` | Create a directory in Foundry's data storage |
+| `foundry_manage_compendium` | Create, delete, or migrate world compendium packs |
+| `foundry_get_world_size` | Get disk usage info for world collections and packs |
 
 ### Convenience
 

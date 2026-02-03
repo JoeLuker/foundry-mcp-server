@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
 import { documentTypeSchema, embeddedDocumentTypeSchema } from "../types.js";
-import { pickFields } from "../utils.js";
+import { jsonResponse, getResults, getFirstResult, pickFields } from "../utils.js";
 
 export function registerEmbeddedTools(
   server: McpServer,
@@ -26,20 +26,13 @@ export function registerEmbeddedTools(
         parentUuid: `${parentType}.${parentId}`,
       });
 
-      const docs = (response.result || []) as Record<string, unknown>[];
+      const docs = getResults(response);
       const defaultFields = ["_id", "name", "type"];
       const selectedFields = fields && fields.length > 0 ? fields : defaultFields;
 
       const results = docs.map((d) => pickFields(d, selectedFields));
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ total: results.length, documents: results }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ total: results.length, documents: results });
     },
   );
 
@@ -58,15 +51,8 @@ export function registerEmbeddedTools(
         parentUuid: `${parentType}.${parentId}`,
       });
 
-      const created = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(created, null, 2),
-          },
-        ],
-      };
+      const created = getFirstResult(response);
+      return jsonResponse(created);
     },
   );
 
@@ -87,16 +73,9 @@ export function registerEmbeddedTools(
         parentUuid: `${parentType}.${parentId}`,
       });
 
-      const results = (response.result || []) as Record<string, unknown>[];
+      const results = getResults(response);
       const ids = results.map((r) => r._id);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ created: ids.length, ids }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ created: ids.length, ids });
     },
   );
 
@@ -118,16 +97,9 @@ export function registerEmbeddedTools(
         parentUuid: `${parentType}.${parentId}`,
       });
 
-      const results = (response.result || []) as Record<string, unknown>[];
+      const results = getResults(response);
       const ids = results.map((r) => r._id);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ updated: ids.length, ids }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ updated: ids.length, ids });
     },
   );
 
@@ -147,14 +119,7 @@ export function registerEmbeddedTools(
       });
 
       const results = (response.result || []) as string[];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ deleted: results.length, ids: results }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ deleted: results.length, ids: results });
     },
   );
 
@@ -176,15 +141,8 @@ export function registerEmbeddedTools(
         parentUuid: `${parentType}.${parentId}`,
       });
 
-      const updated = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(updated, null, 2),
-          },
-        ],
-      };
+      const updated = getFirstResult(response);
+      return jsonResponse(updated);
     },
   );
 
@@ -204,14 +162,7 @@ export function registerEmbeddedTools(
       });
 
       const deleted = (response.result || [])[0];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ deleted: true, id: deleted }, null, 2),
-          },
-        ],
-      };
+      return jsonResponse({ deleted: true, id: deleted });
     },
   );
 }

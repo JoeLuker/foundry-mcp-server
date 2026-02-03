@@ -2,6 +2,7 @@ import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import { jsonResponse, errorResponse } from "../utils.js";
 
 export function registerUploadTools(
   server: McpServer,
@@ -35,17 +36,7 @@ export function registerUploadTools(
     },
     async ({ fileName, base64Content, localPath, mimeType, targetPath: targetPathArg }) => {
       if (!base64Content && !localPath) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({
-                error: "Either base64Content or localPath must be provided",
-              }),
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse("Either base64Content or localPath must be provided");
       }
 
       await client.ensureConnected();
@@ -73,25 +64,14 @@ export function registerUploadTools(
         mimeType,
       );
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                uploaded: true,
-                path: result.path,
-                fileName,
-                mimeType,
-                sizeBytes: nodeBuffer.length,
-                source: localPath ? "localPath" : "base64",
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return jsonResponse({
+        uploaded: true,
+        path: result.path,
+        fileName,
+        mimeType,
+        sizeBytes: nodeBuffer.length,
+        source: localPath ? "localPath" : "base64",
+      });
     },
   );
 }
