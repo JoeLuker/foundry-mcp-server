@@ -20,7 +20,9 @@ import { registerTokenTools } from "./tools/tokens.js";
 import { registerLightingTools } from "./tools/lighting.js";
 import { registerEffectTools } from "./tools/effects.js";
 import { registerTableTools } from "./tools/tables.js";
+import { registerRpcTools } from "./tools/rpc.js";
 import { registerResources } from "./resources.js";
+import { FoundryRpc } from "./rpc.js";
 import type { FoundryConfig } from "./types.js";
 
 const config: FoundryConfig = {
@@ -38,10 +40,11 @@ if (!config.userId) {
 }
 
 const foundryClient = new FoundryClient(config);
+const foundryRpc = new FoundryRpc(foundryClient);
 
 const server = new McpServer({
   name: "foundry-vtt",
-  version: "0.7.0",
+  version: "0.8.0",
 });
 
 // Register all tools
@@ -62,6 +65,7 @@ registerTokenTools(server, foundryClient);
 registerLightingTools(server, foundryClient);
 registerEffectTools(server, foundryClient);
 registerTableTools(server, foundryClient);
+registerRpcTools(server, foundryClient, foundryRpc);
 
 // Register MCP resources
 registerResources(server, foundryClient);
@@ -72,6 +76,7 @@ await server.connect(transport);
 
 // Graceful shutdown
 const shutdown = async () => {
+  foundryRpc.destroy();
   await foundryClient.disconnect();
   process.exit(0);
 };

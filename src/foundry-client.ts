@@ -388,6 +388,45 @@ export class FoundryClient {
   }
 
   /**
+   * Register a persistent listener for module socket events.
+   * Used by the RPC bridge to receive responses from the browser module.
+   */
+  onModuleMessage(
+    moduleName: string,
+    handler: (data: unknown) => void,
+  ): void {
+    if (!this.socket) {
+      throw new Error("Not connected to Foundry VTT");
+    }
+    this.socket.on(`module.${moduleName}`, handler);
+  }
+
+  /**
+   * Remove a listener for module socket events.
+   */
+  offModuleMessage(
+    moduleName: string,
+    handler: (data: unknown) => void,
+  ): void {
+    this.socket?.off(`module.${moduleName}`, handler);
+  }
+
+  /**
+   * Emit a message to a Foundry module's socket channel.
+   * This broadcasts to all connected clients (browser modules).
+   */
+  async emitModuleMessage(
+    moduleName: string,
+    data: unknown,
+  ): Promise<void> {
+    await this.ensureConnected();
+    if (!this.socket?.connected) {
+      throw new Error("Not connected to Foundry VTT");
+    }
+    this.socket.emit(`module.${moduleName}`, data);
+  }
+
+  /**
    * Emit a socket event with only a callback (no data argument).
    * Used for events like "world" and "sizeInfo" where the server handler
    * receives just the callback function as the first argument.

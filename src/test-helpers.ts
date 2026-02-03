@@ -8,6 +8,7 @@
 import { vi } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FoundryClient } from "./foundry-client.js";
+import type { FoundryRpc } from "./rpc.js";
 import type { DocumentSocketResponse } from "./types.js";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -60,6 +61,9 @@ export function createMockClient(overrides: Partial<FoundryClient> = {}): Foundr
     getActiveUsers: vi.fn().mockResolvedValue([]),
     uploadFile: vi.fn().mockResolvedValue({ path: "uploaded/file.png" }),
     executeMacroWithResult: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    onModuleMessage: vi.fn(),
+    offModuleMessage: vi.fn(),
+    emitModuleMessage: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FoundryClient;
 
@@ -106,4 +110,25 @@ export function invokeTool(
   const tool = server.tools.get(name);
   if (!tool) throw new Error(`Tool "${name}" not registered`);
   return tool.handler(args);
+}
+
+// ── Mock FoundryRpc ─────────────────────────────────────────────────
+
+export function createMockRpc(
+  overrides: Partial<FoundryRpc> = {},
+): FoundryRpc {
+  return {
+    call: vi.fn().mockResolvedValue({
+      success: true,
+      result: null,
+      duration: 10,
+    }),
+    ping: vi.fn().mockResolvedValue({
+      alive: true,
+      moduleVersion: "0.1.0",
+      userId: "gm-1",
+    }),
+    destroy: vi.fn(),
+    ...overrides,
+  } as unknown as FoundryRpc;
 }

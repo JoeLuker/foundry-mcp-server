@@ -1,0 +1,21 @@
+{
+  "id": "foundry-mcp-bridge",
+  "title": "Foundry MCP Bridge",
+  "description": "RPC bridge between Foundry VTT and foundry-mcp-server. Listens for remote procedure calls via socket and executes them in the full game context.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "JoeLuker",
+      "url": "https://github.com/JoeLuker"
+    }
+  ],
+  "esmodules": ["scripts/bridge.mjs"],
+  "socket": true,
+  "url": "https://github.com/JoeLuker/foundry-mcp-server",
+  "bugs": "https://github.com/JoeLuker/foundry-mcp-server/issues",
+  "license": "MIT"
+}
