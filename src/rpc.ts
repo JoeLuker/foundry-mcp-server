@@ -1,15 +1,24 @@
 /**
- * Bidirectional RPC layer for communicating with the foundry-mcp-bridge
+ * Bidirectional RPC layer for communicating with the foundry-rpc
  * browser module via Foundry VTT's module socket channel.
  *
- * Sends requests on "module.foundry-mcp-bridge" and correlates responses
+ * Sends requests on "module.foundry-rpc" and correlates responses
  * by requestId. First-response-wins when multiple GM browsers are open.
+ *
+ * foundry-rpc is the canonical RPC bridge, shared with the forge CLI. It
+ * authenticates requests against a shared secret (FOUNDRY_RPC_SECRET) that
+ * must match the world's foundry-rpc "rpcSecret" setting, so requests carry
+ * an "auth" field whenever the secret is configured.
  */
 
 import { randomUUID } from "crypto";
 import type { FoundryClient } from "./foundry-client.js";
 
-const MODULE_NAME = "foundry-mcp-bridge";
+const MODULE_NAME = "foundry-rpc";
+
+// Shared secret for the foundry-rpc bridge. Must match the world's
+// foundry-rpc "rpcSecret" setting. Empty disables auth (bridge allows all).
+const RPC_SECRET = process.env.FOUNDRY_RPC_SECRET ?? "";
 
 // ── Protocol types ───────────────────────────────────────────────────
 
@@ -18,6 +27,7 @@ export interface RpcRequest {
   requestId: string;
   method: string;
   args: unknown[];
+  auth?: string;
 }
 
 export interface RpcResponse {
@@ -107,6 +117,7 @@ export class FoundryRpc {
       requestId,
       method,
       args,
+      ...(RPC_SECRET ? { auth: RPC_SECRET } : {}),
     };
 
     return new Promise<RpcResponse>((resolve, reject) => {
@@ -115,7 +126,7 @@ export class FoundryRpc {
         reject(
           new Error(
             `RPC call "${method}" timed out after ${timeoutMs}ms. ` +
-              `Ensure a GM user has the foundry-mcp-bridge module active in a browser.`,
+              `Ensure a GM user has the foundry-rpc module active in a browser.`,
           ),
         );
       }, timeoutMs);

@@ -1,5 +1,5 @@
 /**
- * MCP tools for the foundry-mcp-bridge RPC system.
+ * MCP tools for the foundry-rpc RPC system.
  *
  * Provides `foundry_rpc` for executing methods in the browser game context,
  * and `foundry_rpc_ping` for checking bridge availability.
@@ -18,11 +18,11 @@ export function registerRpcTools(
 ): void {
   server.tool(
     "foundry_rpc",
-    "Execute a method in the Foundry VTT browser context via the foundry-mcp-bridge companion module. " +
+    "Execute a method in the Foundry VTT browser context via the foundry-rpc companion module. " +
       "Provides full access to game, canvas, UI, and installed module APIs — capabilities not available " +
       "through standard document tools. Built-in methods: 'eval' (arbitrary JS with top-level await), " +
       "'getCanvasDimensions', 'getTokensOnCanvas', 'rollFormula' (native Foundry Roll), 'fromUuid', " +
-      "'getModuleApis', 'callModuleApi'. Requires a GM browser tab with the foundry-mcp-bridge module " +
+      "'getModuleApis', 'callModuleApi'. Requires a GM browser tab with the foundry-rpc module " +
       "active — use foundry_rpc_ping to check availability first.",
     {
       method: z.string().describe(
@@ -72,7 +72,7 @@ export function registerRpcTools(
 
   server.tool(
     "foundry_rpc_ping",
-    "Check if the foundry-mcp-bridge companion module is active and responding " +
+    "Check if the foundry-rpc companion module is active and responding " +
       "in a GM's browser. Returns whether a GM client is connected and ready to " +
       "handle foundry_rpc calls. Use this to verify the bridge is available before " +
       "making RPC calls.",

@@ -219,7 +219,7 @@ Add to `~/.claude/settings.json` (or project `.mcp.json`):
 | `foundry_create_journal` | Create a journal entry with pages in one call |
 | `foundry_modify_actor_hp` | Apply damage/healing to an actor's HP |
 
-### Browser RPC (via foundry-mcp-bridge)
+### Browser RPC (via foundry-rpc)
 
 | Tool | Description |
 |------|-------------|
@@ -230,25 +230,23 @@ Built-in RPC methods: `eval` (arbitrary JS with top-level await), `getCanvasDime
 
 > **Note:** `foundry_rpc` and `foundry_execute_macro` require a connected GM browser client. All other tools communicate directly via Socket.IO and work without a browser.
 
-## Companion Module: foundry-mcp-bridge
+## Companion Module: foundry-rpc
 
-The `foundry-mcp-bridge/` directory contains an optional Foundry VTT module that provides a bidirectional RPC channel. This enables full access to the browser's `game`, `canvas`, `ui`, and installed module APIs — things that aren't accessible through Socket.IO alone.
+Browser RPC uses **`foundry-rpc`**, the canonical RPC bridge module shared with the `forge` CLI — there is a single bridge for the whole toolchain rather than a per-client copy. It provides a bidirectional channel into the browser's `game`, `canvas`, `ui`, and installed module APIs, which aren't reachable over Socket.IO alone.
 
 ### Installing the Bridge Module
 
-Symlink or copy the module into your Foundry data directory:
+`foundry-rpc` is installed as a normal Foundry module (e.g. at `<foundry-data>/Data/modules/foundry-rpc`) and enabled in the world's module settings. It activates automatically for GM users.
 
-```bash
-ln -s /path/to/foundry-mcp-server/foundry-mcp-bridge /path/to/foundry-data/Data/modules/foundry-mcp-bridge
-```
+### Authentication
 
-Then enable **Foundry MCP Bridge** in your world's module settings. The bridge activates automatically for GM users and logs `foundry-mcp-bridge | RPC bridge active for GM: <name>` to the browser console.
+`foundry-rpc` authenticates every request against a shared secret. Set **`FOUNDRY_RPC_SECRET`** in the MCP server's environment to match the world's `foundry-rpc` → **RPC Secret** (`rpcSecret`) setting. If the world setting is empty, auth is disabled and any request is accepted (not recommended). `foundry_rpc_ping` is exempt from auth — it's a health check.
 
 ### How It Works
 
-1. The MCP server sends an RPC request via the `module.foundry-mcp-bridge` socket channel
+1. The MCP server sends an RPC request (carrying its `auth` token) via the `module.foundry-rpc` socket channel
 2. Foundry's server relays it to all connected browser clients
-3. The bridge module (running in a GM's browser) executes the method in the full `game` context
+3. The bridge module (running in a GM's browser) validates auth and executes the method in the full `game` context
 4. The result is sent back over the same socket channel
 5. The MCP server matches the response by request ID and returns it
 
@@ -256,7 +254,7 @@ If multiple GM browsers are open, all will respond — the MCP server accepts th
 
 ### Without the Bridge
 
-All 63 other tools work without the bridge module. The bridge is only needed for:
+All other tools work without the bridge module (they communicate directly via Socket.IO). The bridge is only needed for:
 - Reading live canvas state (token positions, dimensions, grid info)
 - Using Foundry's native Roll class (system-specific dice formulas)
 - Resolving UUIDs with `fromUuid()` (compendium refs, embedded docs)
