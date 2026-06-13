@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FoundryClient } from "../foundry-client.js";
+import type { FoundryRpc } from "../rpc.js";
 import { jsonResponse, errorResponse } from "../utils.js";
 
 export function registerAdminTools(
   server: McpServer,
   client: FoundryClient,
+  rpc: FoundryRpc,
 ): void {
   server.tool(
     "foundry_browse_files",
@@ -137,6 +139,128 @@ export function registerAdminTools(
       const response = await client.emitSocketCallback("sizeInfo");
 
       return jsonResponse(response);
+    },
+  );
+
+  server.tool(
+    "foundry_list_modules",
+    "List all available modules in Foundry VTT. Returns module ID, title, enabled status, and description.",
+    {
+      filterEnabled: z
+        .boolean()
+        .optional()
+        .describe("If true, only return enabled modules"),
+    },
+    async ({ filterEnabled }) => {
+      try {
+        const response = await rpc.call("game.modules");
+
+        if (!response.success) {
+          return errorResponse(`Failed to list modules: ${response.error}`);
+        }
+
+        const modules = response.result as Record<string, any>;
+        const moduleList = Object.entries(modules).map(([id, mod]: [string, any]) => ({
+          id,
+          title: mod.title || id,
+          enabled: mod.active || false,
+          description: mod.description || "",
+          version: mod.version || "",
+        }));
+
+        const filtered = filterEnabled
+          ? moduleList.filter(m => m.enabled)
+          : moduleList;
+
+        return jsonResponse({ modules: filtered, count: filtered.length });
+      } catch (error) {
+        return errorResponse(`Failed to list modules: ${error}`);
+      }
+    },
+  );
+
+  server.tool(
+    "foundry_get_module_settings",
+    "Get the configuration settings for a specific module. Returns all module settings and their current values.",
+    {
+      moduleId: z
+        .string()
+        .describe("The module ID (e.g., 'md-to-journal')"),
+    },
+    async ({ moduleId }) => {
+      try {
+        // Get all settings for the module
+        const response = await rpc.call(
+          `game.settings.settings.filter(s => s.namespace === '${moduleId}')`
+        );
+
+        if (!response.success) {
+          return errorResponse(`Failed to get settings for module ${moduleId}: ${response.error}`);
+        }
+
+        return jsonResponse({ moduleId, settings: response.result });
+      } catch (error) {
+        return errorResponse(`Failed to get settings for module ${moduleId}: ${error}`);
+      }
+    },
+  );
+
+  server.tool(
+    "foundry_set_module_setting",
+    "Set a configuration value for a module setting. Use this to configure modules after installation.",
+    {
+      moduleId: z
+        .string()
+        .describe("The module ID (e.g., 'md-to-journal')"),
+      setting: z
+        .string()
+        .describe("The setting key (e.g., 'sourcePath')"),
+      value: z
+        .unknown()
+        .describe("The value to set (string, number, boolean, or object)"),
+    },
+    async ({ moduleId, setting, value }) => {
+      try {
+        const response = await rpc.call(
+          `game.settings.set('${moduleId}', '${setting}', ${JSON.stringify(value)})`
+        );
+
+        if (!response.success) {
+          return errorResponse(`Failed to set ${moduleId}.${setting}: ${response.error}`);
+        }
+
+        return jsonResponse({
+          success: true,
+          moduleId,
+          setting,
+          value
+        });
+      } catch (error) {
+        return errorResponse(`Failed to set ${moduleId}.${setting}: ${error}`);
+      }
+    },
+  );
+
+  server.tool(
+    "foundry_execute_module_action",
+    "Execute a module-specific action or function. Use this to trigger module sync operations, imports, or other module functionality.",
+    {
+      expression: z
+        .string()
+        .describe("JavaScript expression to execute (e.g., 'game.modules.get(\"md-to-journal\").api.sync()')"),
+    },
+    async ({ expression }) => {
+      try {
+        const response = await rpc.call(expression);
+
+        if (!response.success) {
+          return errorResponse(`Failed to execute: ${response.error}`);
+        }
+
+        return jsonResponse({ success: true, result: response.result });
+      } catch (error) {
+        return errorResponse(`Failed to execute: ${error}`);
+      }
     },
   );
 }

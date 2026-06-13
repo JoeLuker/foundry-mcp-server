@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.tsbuildinfo
 check-shadows.mjs
+
+# Ghost session data (local only)
+.ai-sessions/

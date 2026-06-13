@@ -13,8 +13,8 @@ import type { FoundryClient } from "./foundry-client.js";
 // Helper: capture the handler registered via onModuleMessage
 function captureHandler(client: FoundryClient) {
   const calls = (client.onModuleMessage as ReturnType<typeof vi.fn>).mock.calls;
-  // Find the handler registered for "foundry-mcp-bridge"
-  const call = calls.find((c) => c[0] === "foundry-mcp-bridge");
+  // Find the handler registered for "foundry-rpc"
+  const call = calls.find((c) => c[0] === "foundry-rpc");
   return call?.[1] as ((data: unknown) => void) | undefined;
 }
 
@@ -175,7 +175,7 @@ describe("FoundryRpc", () => {
           // Find the pong handler (separate from the main RPC handler)
           const calls = (client.onModuleMessage as ReturnType<typeof vi.fn>).mock.calls;
           const pongCall = calls.find(
-            (c) => c[0] === "foundry-mcp-bridge" && c !== calls[0],
+            (c) => c[0] === "foundry-rpc" && c !== calls[0],
           );
           const pongHandler = (pongCall ?? calls[calls.length - 1])?.[1] as
             | ((data: unknown) => void)

@@ -60,7 +60,7 @@ registerCombatTools(server, foundryClient);
 registerGameTools(server, foundryClient);
 registerConvenienceTools(server, foundryClient);
 registerPresentationTools(server, foundryClient);
-registerAdminTools(server, foundryClient);
+registerAdminTools(server, foundryClient, foundryRpc);
 registerTokenTools(server, foundryClient);
 registerLightingTools(server, foundryClient);
 registerEffectTools(server, foundryClient);
